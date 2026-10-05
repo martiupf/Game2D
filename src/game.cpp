@@ -35,10 +35,10 @@ GameMap* loadGameMap(const char* filename) {
 				sCell& cell = map->getCell(x, y, l);
 				cell.tileId = tileId;
 				if (l == 0) {
-					if (tileId == 652) {
+					if (tileId == 652) { //Change Id if you want
 						cell.type = EMPTY;
 					}
-					else if (tileId == 910) {
+					else if (tileId == 910) { //Change Id If you want
 						cell.type = WALL;
 					}
 				}
