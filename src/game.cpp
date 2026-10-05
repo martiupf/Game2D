@@ -2,8 +2,42 @@
 #include "utils.h"
 #include "input.h"
 #include "image.h"
+#include "json.hpp"
+#include <fstream>
 
 #include <cmath>
+
+GameMap* loadGameMap(const char* filename) {
+	using json = nlohmann::json;
+	std::ifstream f(filename);
+	if (!f.good())
+		return nullptr;
+	json jData = json::parse(f);
+
+	int w = jData["width"];
+	int h = jData["height"];
+	int numLayers = jData["layers"].size();
+
+	GameMap* map = new GameMap(w, h);
+	//Allocate memory for data inside each layer
+	map->layers = new sLayer[numLayers];
+	map->tile_width = jData["tilewidth"];
+	map->tile_height = jData["tileheight"];
+
+	for (int l = 0; l < numLayers; l++) {
+		//Allocate memory for data inside each layer
+		map->layers[l].data = new sCell[w * h];
+		json layer = jData["layers"][l];
+		for (int x = 0; x < map->width; x++) {
+			for (int y = 0; y < map->height;y++) {
+				int index = x + y * map->width;
+				int tileId = layer["data"][index].get<int>() - 1;
+				map->getCell(x, y, l).tileId = tileId;
+			}
+		}
+	}
+	return map;
+}
 
 Game* Game::instance = NULL;
 

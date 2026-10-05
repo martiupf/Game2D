@@ -15,6 +15,7 @@ enum eItemType: uint16 {NOTHING, SWORD, POTION};
 struct sCell {
 	eCellType type;
 	eItemType item;
+	uint16 tileId;
 };
 struct sObject {
 	eCellType type;
