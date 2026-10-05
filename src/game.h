@@ -52,13 +52,13 @@ class Game
 {
 public:
 	static Game* instance;
-	
+	GameMap* map;
 	//window
 	SDL_Window* window;
 	SDL_Renderer* renderer;
 	int window_width;
 	int window_height;
-
+	Vector2 cameraPos = Vector2(0, 0); //Change this after
 	//some globals
 	long frame;
     float time;

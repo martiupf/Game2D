@@ -44,6 +44,7 @@ Game* Game::instance = NULL;
 Image font;
 Image minifont;
 Image sprite;
+Image tileset;
 Color bgcolor(130, 80, 100);
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
@@ -55,6 +56,8 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	instance = this;
 	must_exit = false;
 
+	map = loadGameMap("data/MapaVisual.json");
+	
 	fps = 0;
 	frame = 0;
 	time = 0.0f;
@@ -63,7 +66,8 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
 	sprite.load("data/spritesheet.tga"); //example to load an sprite
-
+	tileset.load("data/Dungeon Gathering Free Version/Set 1.png");
+	
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -79,15 +83,39 @@ void Game::render(void)
 	//...
 
 	//some new useful functions
-		framebuffer.fill( bgcolor );								//fills the image with one color
-		//framebuffer.drawLine( 0, 0, 100,100, Color::RED );		//draws a line
-		//framebuffer.drawImage( sprite, 0, 0 );					//draws full image
-		framebuffer.drawImage( sprite, 0, 0, framebuffer.width, framebuffer.height );			//draws a scaled image
-		//framebuffer.drawImage( sprite, 0, 0, Area(0,0,14,18) );	//draws only a part of an image
-		framebuffer.drawText( "Hello World", 0, 0, font );				//draws some text using a bitmap font in an image (assuming every char is 7x9)
-		//framebuffer.drawText( toString(time), 1, 10, minifont,4,6);	//draws some text using a bitmap font in an image (assuming every char is 4x6)
+	framebuffer.fill( bgcolor );								//fills the image with one color
+	if (!map || tileset.width == 0 || map->tile_width == 0) {
+		showFramebuffer(&framebuffer);
+		return;
+	}
+	int num_tiles_x = tileset.width / map->tile_width;
+	int num_tiles_y = tileset.height / map->tile_height;
+	int map_layer_id = 0;
 
-	//send image to screen
+	for (int x = 0;x < map->width; ++x) {
+		for (int y = 0; y<map->height;++y) {
+			sCell& cell = map->getCell(x, y, map_layer_id);
+			int tileId = (int)cell.tileId;
+			if (tileId == -1)
+				continue;
+			int screenx = x * map->tile_width - cameraPos.x;
+			int screeny = y * map->tile_height - cameraPos.y;
+
+			if (screenx < -map->tile_width ||
+				screenx >(int)framebuffer.width ||
+				screeny < -map->tile_height ||
+				screeny >(int)framebuffer.height)
+				continue;
+
+			int tilex = (tileId % num_tiles_x) * map->tile_width;
+			int tiley = floor(tileId / num_tiles_x) * map->tile_height;
+
+			Area area(tilex, tiley, map->tile_width, map->tile_height);
+
+			framebuffer.drawImage(tileset, screenx, screeny, area);
+
+		}
+	}
 	showFramebuffer(&framebuffer);
 }
 

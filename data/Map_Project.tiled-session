@@ -1,13 +1,33 @@
 {
-    "activeFile": "",
+    "activeFile": "Dungeon Gathering Free Version/Set 1.tsx",
     "expandedProjectPaths": [
+        "Dungeon Gathering Free Version",
+        "."
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
+        "Dungeon Gathering Free Version/Set 1.tsx": {
+            "scaleInDock": 3,
+            "scaleInEditor": 1
+        }
     },
+    "last.exportedFilePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data",
+    "last.imagePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data/Dungeon Gathering Free Version",
+    "map.height": 15,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "map.tileHeight": 8,
+    "map.tileWidth": 8,
+    "map.width": 20,
     "openFiles": [
+        "Dungeon Gathering Free Version/Set 1.tsx"
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
-    ]
+        "Dungeon Gathering Free Version/Set 1.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    }
 }
