@@ -10,11 +10,48 @@
 #include "utils.h"
 #include "synth.h"
 
+enum eCellType: uint16 {EMPTY, START, WALL, DOOR, CHEST};
+enum eItemType: uint16 {NOTHING, SWORD, POTION};
+struct sCell {
+	eCellType type;
+	eItemType item;
+};
+struct sObject {
+	eCellType type;
+	Vector2 position;
+};
+
+struct sLayer {
+	sCell* data;
+};
+
+class GameMap {
+public:
+	int width = 0;
+	int height = 0;
+	
+	int tile_width = 8;
+	int tile_height = 8;
+
+	sLayer* layers = nullptr;
+
+	GameMap(){}
+
+	GameMap(int w, int h) {
+		width = w;
+		height = h;
+	}
+
+	sCell& getCell(int x, int y, int l) {
+		return layers[l].data[x + y * width];
+	}
+};
+
 class Game
 {
 public:
 	static Game* instance;
-
+	
 	//window
 	SDL_Window* window;
 	SDL_Renderer* renderer;
