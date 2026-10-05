@@ -49,7 +49,7 @@ SDL_Window* createWindow(const char* caption, int width, int height, bool fullsc
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, multisample ); //increase to have smoother polygons
 	#else
 	#endif
-
+	//hola
 	// Initialize the joystick subsystem
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
 
