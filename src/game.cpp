@@ -32,7 +32,16 @@ GameMap* loadGameMap(const char* filename) {
 			for (int y = 0; y < map->height;y++) {
 				int index = x + y * map->width;
 				int tileId = layer["data"][index].get<int>() - 1;
-				map->getCell(x, y, l).tileId = tileId;
+				sCell& cell = map->getCell(x, y, l);
+				cell.tileId = tileId;
+				if (l == 0) {
+					if (tileId == 652) {
+						cell.type = EMPTY;
+					}
+					else if (tileId == 910) {
+						cell.type = WALL;
+					}
+				}
 			}
 		}
 	}
@@ -56,7 +65,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	instance = this;
 	must_exit = false;
 
-	map = loadGameMap("data/MapaVisual.json");
+	map = loadGameMap("data/Mapa.json");
 	
 	fps = 0;
 	frame = 0;
@@ -90,7 +99,7 @@ void Game::render(void)
 	}
 	int num_tiles_x = tileset.width / map->tile_width;
 	int num_tiles_y = tileset.height / map->tile_height;
-	int map_layer_id = 0;
+	int map_layer_id = 1;
 
 	for (int x = 0;x < map->width; ++x) {
 		for (int y = 0; y<map->height;++y) {
