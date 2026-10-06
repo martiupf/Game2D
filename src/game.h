@@ -39,6 +39,7 @@ struct Player {
 	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Down
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
+	std::vector<int> inputStack;
 };
 
 struct sLayer {

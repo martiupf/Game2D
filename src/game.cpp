@@ -186,34 +186,51 @@ void Game::render(void)
 void Game::update(double seconds_elapsed)
 {
 	float speed = 80.0f;
+
+	auto processKey = [&](bool isPressed, int dir) {
+		if (isPressed) {
+			if (std::find(player.inputStack.begin(), player.inputStack.end(), dir) == player.inputStack.end()) {
+				player.inputStack.push_back(dir);
+			}
+		}
+		else {
+			auto it = std::find(player.inputStack.begin(), player.inputStack.end(), dir);
+			if (it != player.inputStack.end()) {
+				player.inputStack.erase(it);
+			}
+		}
+		};
+
+	processKey(Input::isKeyPressed(SDL_SCANCODE_DOWN) || Input::isKeyPressed(SDL_SCANCODE_S), 0);
+	processKey(Input::isKeyPressed(SDL_SCANCODE_LEFT) || Input::isKeyPressed(SDL_SCANCODE_A), 1);
+	processKey(Input::isKeyPressed(SDL_SCANCODE_RIGHT) || Input::isKeyPressed(SDL_SCANCODE_D), 2);
+	processKey(Input::isKeyPressed(SDL_SCANCODE_UP) || Input::isKeyPressed(SDL_SCANCODE_W), 3);
+
 	bool isMoving = false;
-	//Read the keyboard state, to see all the keycodes: https://wiki.libsdl.org/SDL_Keycode
-	if (Input::isKeyPressed(SDL_SCANCODE_UP)) //if key up
-	{
-		player.position.y -= speed * (float)seconds_elapsed;
-		player.dir = 3;
+
+	if (!player.inputStack.empty()) {
+		int activeDir = player.inputStack.back();
+		player.dir = activeDir;
 		isMoving = true;
-	}
-	if (Input::isKeyPressed(SDL_SCANCODE_DOWN)) //if key down
-	{
-		player.position.y += speed * (float)seconds_elapsed;
-		player.dir = 0;
-		isMoving = true;
-	}
-	if (Input::isKeyPressed(SDL_SCANCODE_LEFT)) {
-		player.position.x -= speed * (float)seconds_elapsed;
-		player.dir = 1;
-		isMoving = true;
-	}
-	if (Input::isKeyPressed(SDL_SCANCODE_RIGHT)) {
-		player.position.x += speed * (float)seconds_elapsed;
-		player.dir = 2;
-		isMoving = true;
+
+		switch (activeDir) {
+		case 0: // Down
+			player.position.y += speed * (float)seconds_elapsed;
+			break;
+		case 1: // Left
+			player.position.x -= speed * (float)seconds_elapsed;
+			break;
+		case 2: // Right
+			player.position.x += speed * (float)seconds_elapsed;
+			break;
+		case 3: // Up
+			player.position.y -= speed * (float)seconds_elapsed;
+			break;
+		}
 	}
 
-	if(isMoving) {
+	if (isMoving) {
 		player.animTimer += (float)seconds_elapsed;
-
 		if (player.animTimer >= 0.15f) {
 			player.spriteFrame = (player.spriteFrame + 1) % 3;
 			player.animTimer = 0.0f;
@@ -222,24 +239,6 @@ void Game::update(double seconds_elapsed)
 	else {
 		player.spriteFrame = 0;
 		player.animTimer = 0.0f;
-	}
-
-	//example of 'was pressed'
-	if (Input::wasKeyPressed(SDL_SCANCODE_A)) //if key A was pressed
-	{
-	}
-	if (Input::wasKeyPressed(SDL_SCANCODE_Z)) //if key Z was pressed
-	{
-	}
-
-	//to read the gamepad state
-	if (Input::gamepads[0].isButtonPressed(A_BUTTON)) //if the A button is pressed
-	{
-	}
-
-	if (Input::gamepads[0].direction & PAD_UP) //left stick pointing up
-	{
-		bgcolor.set(0, 255, 0);
 	}
 }
 
