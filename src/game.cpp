@@ -110,6 +110,7 @@ Image minifont;
 Image sprite;
 Image tileset;
 Color bgcolor(130, 80, 100);
+Image bulletImage;
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
 {
@@ -133,10 +134,86 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
 	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
+	bulletImage.load("data/pixil-frame-0.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
 }
+
+void Game::shootBullet() {
+	Bullet newBullet;
+
+	float bulletWidth = 10.0f;
+	float bulletHeight = 10.0f;
+	float spawnOffset = 8.0f;
+
+	newBullet.speed = 250.0f;
+	newBullet.active = true;
+
+	switch (player.dir) {
+	case 3: newBullet.dirX = 0.0f; newBullet.dirY = -1.0f; break;
+	case 0: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
+	case 1: newBullet.dirX = -1.0f; newBullet.dirY = 0.0f; break;
+	case 2: newBullet.dirX = 1.0f; newBullet.dirY = 0.0f; break;
+	default: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
+	}
+
+	newBullet.x = (player.position.x + (player.width / 2.0f) - (bulletWidth / 2.0f)) + (newBullet.dirX * spawnOffset);
+	newBullet.y = (player.position.y + (player.height / 2.0f) - (bulletHeight / 2.0f)) + (newBullet.dirY * spawnOffset);
+
+	player.playerBullets.push_back(newBullet);
+}
+
+void Game::updateBullets(float seconds_elapsed) {
+	for (auto& b : player.playerBullets) {
+		if (!b.active) continue;
+
+		b.x += b.dirX * b.speed * seconds_elapsed;
+		b.y += b.dirY * b.speed * seconds_elapsed;
+
+		if (map->isWallAtPosition(b.x, b.y)) {
+			b.active = false;
+		}
+	}
+
+	player.playerBullets.erase(
+		std::remove_if(player.playerBullets.begin(), player.playerBullets.end(), [](const Bullet& b) {
+			return !b.active;
+			}),
+		player.playerBullets.end()
+	);
+}
+
+void Game::renderBullets(Image& framebuffer) {
+	for (const auto& b : player.playerBullets) {
+		float screenX = b.x - cameraPos.x;
+		float screenY = b.y - cameraPos.y;
+
+		if (screenX < -16 || screenX > window_width || screenY < -16 || screenY > window_height) {
+			return;
+		}
+
+		int srcX;
+
+		if (b.dirX == 1) {
+			srcX = 10;
+		}
+		else if (b.dirX == -1) {
+			srcX = 20;
+		}
+		else if (b.dirY == 1) {
+			srcX = 30;
+		}
+		else if (b.dirY == -1) {
+			srcX = 0;
+		}
+		Area area(srcX, 0, 10, 10);
+		framebuffer.drawImage(bulletImage, (int)screenX, (int)screenY, area);
+
+	}
+}
+
+
 
 //what to do when the image has to be draw
 void Game::render(void)
@@ -192,12 +269,16 @@ void Game::render(void)
 	Area playerArea(tileX, tileY, player.width, player.height);
 	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 
+	renderBullets(framebuffer);
+
 	showFramebuffer(&framebuffer);
 }
 
 void Game::update(double seconds_elapsed)
 {
 	float speed = 80.0f;
+
+	updateBullets(seconds_elapsed);
 
 	auto processKey = [&](bool isPressed, int dir) { //Adds and extracts directions to the stack
 		if (isPressed) {
@@ -261,6 +342,9 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 	switch(event.keysym.sym)
 	{
 		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
+		case SDLK_z:
+			shootBullet();
+			break;
 	}
 }
 

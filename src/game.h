@@ -37,14 +37,22 @@ struct sObject {
 	Vector2 position;
 };
 
+struct Bullet {
+	float x, y;
+	float dirX, dirY;
+	float speed;
+	bool active;
+};
+
 struct Player {
 	Vector2 position;
 	int width = PLAYERWIDTH;
 	int height = PLAYERHEIGHT;
-	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Down
+	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Up
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
 	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
+	std::vector<Bullet> playerBullets;
 };
 
 struct sLayer {
@@ -104,7 +112,7 @@ class Game
 {
 public:
 	static Game* instance;
-	GameMap* map;
+	GameMap* map = nullptr;
 	//window
 	SDL_Window* window;
 	SDL_Renderer* renderer;
@@ -147,7 +155,9 @@ public:
 	//audio stuff
 	void enableAudio(); //opens audio channel to play sound
 	void onAudio(float* buffer, unsigned int len, double time, SDL_AudioSpec &audio_spec); //called constantly to fill the audio buffer
-
+	void shootBullet();
+	void updateBullets(float seconds_elapsed);
+	void renderBullets(Image& framebuffer);
 	bool checkPlayerCollision(float nextX, float nextY);
 };
 
