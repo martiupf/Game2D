@@ -16,33 +16,59 @@ GameMap* loadGameMap(const char* filename) {
 
 	int w = jData["width"];
 	int h = jData["height"];
-	int numLayers = jData["layers"].size();
 
 	GameMap* map = new GameMap(w, h);
 	//Allocate memory for data inside each layer
-	map->numLayers = numLayers;
-	map->layers = new sLayer[numLayers];
+
 	map->tile_width = jData["tilewidth"];
 	map->tile_height = jData["tileheight"];
+
+	if (jData.contains("tilesets") && jData["tilesets"].is_array()) {
+		for (auto& tsJson : jData["tilesets"]) {
+			sTileset ts;
+			ts.firstgid = tsJson.value("firstgid", 1);
+
+			std::string source = tsJson.value("source", "");
+
+			size_t pos = source.find(".tsx");
+			if (pos != std::string::npos) {
+				source.replace(pos, 4, ".png");
+			}
+
+			std::string texturePath = "data/" + source;
+			if (!ts.texture.load(texturePath.c_str())) {
+				std::cout << "[ERROR] Cannot load tileset: " << texturePath << std::endl;
+			}
+
+			ts.tileWidth = map->tile_width;
+			ts.tileHeight = map->tile_height;
+			map->tilesets.push_back(ts);
+		}
+	}
+	int numLayers = jData["layers"].size();
+	map->numLayers = numLayers;
+	map->layers = new sLayer[numLayers];
 
 	for (int l = 0; l < numLayers; l++) {
 		json layer = jData["layers"][l];
 		//Allocate memory for data inside each layer
 		map->layers[l].name = layer["name"].get<std::string>();
+		map->layers[l].visible = layer.value("visible", true);
 		map->layers[l].data = new sCell[w * h];
 		bool isFuncional = (map->layers[l].name == "Funcional");
-		for (int x = 0; x < map->width; x++) {
-			for (int y = 0; y < map->height;y++) {
-				int index = x + y * map->width;
-				int tileId = layer["data"][index].get<int>() - 1;
-				sCell& cell = map->getCell(x, y, l);
-				cell.tileId = tileId;
-				if (isFuncional) {
-					if (tileId == 652) { //Change Id if you want
-						cell.type = EMPTY;
-					}
-					else if (tileId == 910) { //Change Id If you want
-						cell.type = WALL;
+		if (layer.contains("data") && layer["data"].is_array()) {
+			for (int x = 0; x < map->width; x++) {
+				for (int y = 0; y < map->height; y++) {
+					int index = x + y * map->width;
+					int rawGid = layer["data"][index].get<int>();
+
+					sCell& cell = map->getCell(x, y, l);
+
+					cell.tileId = (rawGid == 0) ? -1 : rawGid;
+
+					if (isFuncional) {
+						if (rawGid == 911) cell.type = WALL;
+						else if (rawGid == 653) cell.type = EMPTY;
 					}
 				}
 			}
@@ -88,51 +114,49 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 //what to do when the image has to be draw
 void Game::render(void)
 {
-	//Create a new Image (or we could create a global one if we want to keep the previous frame)
-	Image framebuffer(160, 120); //do not change framebuffer size
+	Image framebuffer(160, 120);
+	framebuffer.fill(bgcolor);
 
-	//add your code here to fill the framebuffer
-	//...
-
-	//some new useful functions
-	framebuffer.fill( bgcolor );								//fills the image with one color
-	if (!map || tileset.width == 0 || map->tile_width == 0) {
+	if (!map || map->numLayers == 0) {
 		showFramebuffer(&framebuffer);
 		return;
 	}
-	int map_layer_id = map->getLayerIndex("Visual");
-	if (map_layer_id == -1) {
-		showFramebuffer(&framebuffer);
-		return;
-	}
-	int num_tiles_x = tileset.width / map->tile_width;
-	int num_tiles_y = tileset.height / map->tile_height;
-	
 
-	for (int x = 0;x < map->width; ++x) {
-		for (int y = 0; y<map->height;++y) {
-			sCell& cell = map->getCell(x, y, map_layer_id);
-			int tileId = (int)cell.tileId;
-			if (tileId == -1)
-				continue;
-			int screenx = x * map->tile_width - cameraPos.x;
-			int screeny = y * map->tile_height - cameraPos.y;
+	for (int l = 0; l < map->numLayers; ++l) {
+		sLayer& layer = map->layers[l];
 
-			if (screenx < -map->tile_width ||
-				screenx >(int)framebuffer.width ||
-				screeny < -map->tile_height ||
-				screeny >(int)framebuffer.height)
-				continue;
+		if (layer.name == "Funcional" || !layer.visible)
+			continue;
 
-			int tilex = (tileId % num_tiles_x) * map->tile_width;
-			int tiley = floor(tileId / num_tiles_x) * map->tile_height;
+		for (int y = 0; y < map->height; ++y) {
+			for (int x = 0; x < map->width; ++x) {
+				sCell& cell = map->getCell(x, y, l);
+				int gid = cell.tileId;
 
-			Area area(tilex, tiley, map->tile_width, map->tile_height);
+				if (gid <= 0) continue;
 
-			framebuffer.drawImage(tileset, screenx, screeny, area);
+				sTileset* ts = map->getTilesetForGID(gid);
+				if (!ts || ts->texture.width == 0) continue;
 
+				int localTileId = gid - ts->firstgid;
+				int num_tiles_x = ts->texture.width / ts->tileWidth;
+
+				int screenx = x * map->tile_width - cameraPos.x;
+				int screeny = y * map->tile_height - cameraPos.y;
+
+				if (screenx < -map->tile_width || screenx >= (int)framebuffer.width ||
+					screeny < -map->tile_height || screeny >= (int)framebuffer.height)
+					continue;
+
+				int tilex = (localTileId % num_tiles_x) * ts->tileWidth;
+				int tiley = (localTileId / num_tiles_x) * ts->tileHeight;
+
+				Area area(tilex, tiley, ts->tileWidth, ts->tileHeight);
+				framebuffer.drawImage(ts->texture, screenx, screeny, area);
+			}
 		}
 	}
+
 	showFramebuffer(&framebuffer);
 }
 

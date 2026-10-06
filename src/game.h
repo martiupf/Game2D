@@ -17,6 +17,15 @@ struct sCell {
 	eItemType item;
 	uint16 tileId;
 };
+
+struct sTileset {
+	int firstgid = 1;
+	std::string name;
+	Image texture;
+	int tileWidth = 8;
+	int tileHeight = 8;
+};
+
 struct sObject {
 	eCellType type;
 	Vector2 position;
@@ -24,6 +33,7 @@ struct sObject {
 
 struct sLayer {
 	std::string name;
+	bool visible = true;
 	sCell* data;
 };
 
@@ -37,6 +47,8 @@ public:
 
 	int numLayers = 0;
 	sLayer* layers = nullptr;
+
+	std::vector<sTileset> tilesets;
 
 	GameMap(){}
 
@@ -54,6 +66,19 @@ public:
 			if (layers[i].name == name) return i;
 		}
 		return -1;
+	}
+
+	sTileset* getTilesetForGID(int gid) {
+		sTileset* selected = nullptr;
+		for (auto& ts : tilesets) {
+			if (gid >= ts.firstgid) {
+				selected = &ts;
+			}
+			else {
+				break;
+			}
+		}
+		return selected;
 	}
 };
 
