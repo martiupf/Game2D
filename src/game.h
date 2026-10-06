@@ -23,6 +23,7 @@ struct sObject {
 };
 
 struct sLayer {
+	std::string name;
 	sCell* data;
 };
 
@@ -34,6 +35,7 @@ public:
 	int tile_width = 8;
 	int tile_height = 8;
 
+	int numLayers = 0;
 	sLayer* layers = nullptr;
 
 	GameMap(){}
@@ -45,6 +47,13 @@ public:
 
 	sCell& getCell(int x, int y, int l) {
 		return layers[l].data[x + y * width];
+	}
+
+	int getLayerIndex(const std::string& name) {
+		for (int i = 0;i < numLayers;i++) {
+			if (layers[i].name == name) return i;
+		}
+		return -1;
 	}
 };
 

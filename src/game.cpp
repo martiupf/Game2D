@@ -20,21 +20,24 @@ GameMap* loadGameMap(const char* filename) {
 
 	GameMap* map = new GameMap(w, h);
 	//Allocate memory for data inside each layer
+	map->numLayers = numLayers;
 	map->layers = new sLayer[numLayers];
 	map->tile_width = jData["tilewidth"];
 	map->tile_height = jData["tileheight"];
 
 	for (int l = 0; l < numLayers; l++) {
-		//Allocate memory for data inside each layer
-		map->layers[l].data = new sCell[w * h];
 		json layer = jData["layers"][l];
+		//Allocate memory for data inside each layer
+		map->layers[l].name = layer["name"].get<std::string>();
+		map->layers[l].data = new sCell[w * h];
+		bool isFuncional = (map->layers[l].name == "Funcional");
 		for (int x = 0; x < map->width; x++) {
 			for (int y = 0; y < map->height;y++) {
 				int index = x + y * map->width;
 				int tileId = layer["data"][index].get<int>() - 1;
 				sCell& cell = map->getCell(x, y, l);
 				cell.tileId = tileId;
-				if (l == 0) {
+				if (isFuncional) {
 					if (tileId == 652) { //Change Id if you want
 						cell.type = EMPTY;
 					}
@@ -97,9 +100,14 @@ void Game::render(void)
 		showFramebuffer(&framebuffer);
 		return;
 	}
+	int map_layer_id = map->getLayerIndex("Visual");
+	if (map_layer_id == -1) {
+		showFramebuffer(&framebuffer);
+		return;
+	}
 	int num_tiles_x = tileset.width / map->tile_width;
 	int num_tiles_y = tileset.height / map->tile_height;
-	int map_layer_id = 1;
+	
 
 	for (int x = 0;x < map->width; ++x) {
 		for (int y = 0; y<map->height;++y) {
