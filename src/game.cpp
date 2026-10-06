@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-GameMap* loadGameMap(const char* filename) {
+GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 	using json = nlohmann::json;
 	std::ifstream f(filename);
 	if (!f.good())
@@ -57,18 +57,32 @@ GameMap* loadGameMap(const char* filename) {
 
 	for (int l = 0; l < numLayers; l++) {
 		json layer = jData["layers"][l];
-		map->layers[l].name = layer.value("name", "");
-		map->layers[l].visible = layer.value("visible", true);
+		std::string layerName = layer.value("name", "");
+		map->layers[l].name = layerName;
 		map->layers[l].data = new sCell[w * h];
 
+		if (layerName == "Player" || layerName == "player") {
+			map->layers[l].visible = false;
+		}
+		else {
+			map->layers[l].visible = layer.value("visible", true);
+		}
+
 		if (layer.contains("data") && layer["data"].is_array()) {
-			for (int x = 0; x < map->width; x++) {
-				for (int y = 0; y < map->height; y++) {
+			for (int y = 0; y < map->height; y++) {
+				for (int x = 0; x < map->width; x++) {
 					int index = x + y * map->width;
 					int rawGid = layer["data"][index].get<int>();
 
 					sCell& cell = map->getCell(x, y, l);
 					cell.tileId = (rawGid == 0) ? -1 : rawGid;
+
+					// Si estamos en la capa de Player y encontramos el tile de Spawn
+					if ((layerName == "Player" || layerName == "player") && rawGid == 2673) {
+						// Guardamos las coordenadas en PÍXELES
+						outSpawnPos.x = (float)(x * map->tile_width);
+						outSpawnPos.y = (float)(y * map->tile_height);
+					}
 				}
 			}
 		}
@@ -93,7 +107,10 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	instance = this;
 	must_exit = false;
 
-	map = loadGameMap("data/Mapa.json");
+	Vector2 spawnPos(0, 0);
+	map = loadGameMap("data/Mapa.json", spawnPos);
+	this->spawnPos = spawnPos;
+	this->player.position = spawnPos;
 	
 	fps = 0;
 	frame = 0;
@@ -102,7 +119,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
-	sprite.load("data/spritesheet.tga"); //example to load an sprite
+	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //example to load an sprite
 	
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
@@ -154,6 +171,11 @@ void Game::render(void)
 			}
 		}
 	}
+	int playerScreenX = (int)player.position.x - (int)cameraPos.x;
+	int playerScreenY = (int)player.position.y - (int)cameraPos.y;
+
+	Area playerArea(0, 0, player.width, player.height);
+	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 
 	showFramebuffer(&framebuffer);
 }

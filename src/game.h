@@ -99,6 +99,9 @@ public:
 	int window_width;
 	int window_height;
 	Vector2 cameraPos = Vector2(0, 0); //Change this after
+	Player player;
+	Vector2 spawnPos;
+
 	//some globals
 	long frame;
     float time;
