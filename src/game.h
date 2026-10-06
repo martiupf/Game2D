@@ -19,8 +19,8 @@ enum eCellType: uint16 {EMPTY, START, WALL, DOOR, CHEST};
 enum eItemType: uint16 {NOTHING, SWORD, POTION};
 
 struct sCell {
-	eCellType type;
-	eItemType item;
+	eCellType type = EMPTY;
+	eItemType item = NOTHING;
 	int tileId = 0; //Id from Tiled tileset maps
 };
 
@@ -96,6 +96,8 @@ public:
 		}
 		return selected;
 	}
+
+	bool isWallAtPosition(float worldX, float worldY);
 };
 
 class Game
@@ -145,6 +147,8 @@ public:
 	//audio stuff
 	void enableAudio(); //opens audio channel to play sound
 	void onAudio(float* buffer, unsigned int len, double time, SDL_AudioSpec &audio_spec); //called constantly to fill the audio buffer
+
+	bool checkPlayerCollision(float nextX, float nextY);
 };
 
 

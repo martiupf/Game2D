@@ -7,6 +7,23 @@
 
 #include <cmath>
 
+#define WALL_GID 909
+#define CHARACTER_SPRITE_GID 2241
+
+bool GameMap::isWallAtPosition(float worldX, float worldY) {
+	int tileX = (int)worldX / this->tile_width;
+	int tileY = (int)worldY / this->tile_height;
+
+	if (tileX < 0 || tileX >= this->width || tileY < 0 || tileY >= this->height) {
+		return true;
+	}
+
+	int layerIdx = this->getLayerIndex("Funcional");
+	if (layerIdx < 0) return false;
+
+	return (this->layers[layerIdx].data[tileY*this->width + tileX].type == WALL);
+}
+
 GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 	using json = nlohmann::json;
 	std::ifstream f(filename);
@@ -71,9 +88,13 @@ GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 					sCell& cell = map->getCell(x, y, l);
 					cell.tileId = rawGid;
 
-					if ((layerName == "Player" || layerName == "player") && rawGid == 2673) {
+					if ((layerName == "Player" || layerName == "player") && rawGid == CHARACTER_SPRITE_GID) {
 						outSpawnPos.x = (float)(x * map->tile_width); //We take the player starting position
 						outSpawnPos.y = (float)(y * map->tile_height);
+					}
+					else if (layerName == "Funcional" || layerName == "funcional") {
+						if (rawGid == 0) cell.type = EMPTY;
+						else if (rawGid == WALL_GID) cell.type = WALL;
 					}
 				}
 			}
@@ -208,16 +229,20 @@ void Game::update(double seconds_elapsed)
 
 		switch (activeDir) {
 		case 0: // Down
-			player.position.y += speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x, player.position.y + speed * (float)seconds_elapsed))
+				player.position.y += speed * (float)seconds_elapsed;
 			break;
 		case 1: // Left
-			player.position.x -= speed * (float)seconds_elapsed;
+			if(!checkPlayerCollision(player.position.x - speed * (float)seconds_elapsed, player.position.y))
+				player.position.x -= speed * (float)seconds_elapsed;
 			break;
 		case 2: // Right
-			player.position.x += speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x + speed * (float)seconds_elapsed, player.position.y))
+				player.position.x += speed * (float)seconds_elapsed;
 			break;
 		case 3: // Up
-			player.position.y -= speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x, player.position.y - speed * (float)seconds_elapsed))
+				player.position.y -= speed * (float)seconds_elapsed;
 			break;
 		}
 	}
@@ -383,4 +408,24 @@ void Game::onAudio(float *buffer, unsigned int len, double time, SDL_AudioSpec& 
 {
 	//fill the audio buffer using our custom retro synth
 	synth.generateAudio(buffer, len, audio_spec);
+}
+
+bool Game::checkPlayerCollision(float nextX, float nextY)
+{
+	float offsetX = 3.0f;
+	float offsetY = 10.0f;
+	float width = 10.0f;
+	float height = 6.0f;
+
+	float left = nextX + offsetX;
+	float right = nextX + offsetX + width - 1.0f;
+	float top = nextY + offsetY;
+	float bottom = nextY + offsetY + height - 1.0f;
+
+	if (map->isWallAtPosition(left, top))     return true;
+	if (map->isWallAtPosition(right, top))    return true;
+	if (map->isWallAtPosition(left, bottom))  return true;
+	if (map->isWallAtPosition(right, bottom)) return true;
+
+	return false;
 }

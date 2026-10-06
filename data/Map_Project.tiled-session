@@ -7,14 +7,17 @@
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
         "03-soldier.tsx": {
+            "dynamicWrapping": false,
             "scaleInDock": 5.5,
             "scaleInEditor": 8
         },
         "16x16-RPG-characters/preview.tsx": {
+            "dynamicWrapping": true,
             "scaleInDock": 4,
             "scaleInEditor": 5.5
         },
         "Dungeon Gathering Free Version/Set 1.tsx": {
+            "dynamicWrapping": false,
             "scaleInDock": 8,
             "scaleInEditor": 4
         },
@@ -23,7 +26,7 @@
             "selectedLayer": 1,
             "viewCenter": {
                 "x": 68.33333333333331,
-                "y": -0.1666666666666714
+                "y": 68.83333333333334
             }
         }
     },
