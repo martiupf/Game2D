@@ -6,6 +6,9 @@
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
+        "16x16-RPG-characters/preview.tsx": {
+            "scaleInEditor": 5.5
+        },
         "Dungeon Gathering Free Version/Set 1.tsx": {
             "scaleInDock": 3,
             "scaleInEditor": 4
@@ -20,7 +23,7 @@
         }
     },
     "last.exportedFilePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data",
-    "last.imagePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data/Dungeon Gathering Free Version",
+    "last.imagePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style",
     "map.height": 15,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
     "map.lastUsedFormat": "tmx",
@@ -33,6 +36,7 @@
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
+        "16x16-RPG-characters/preview.tsx",
         "Dungeon Gathering Free Version/Set 1.tsx",
         "Mapa.tmx"
     ],

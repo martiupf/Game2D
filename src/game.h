@@ -15,7 +15,7 @@ enum eItemType: uint16 {NOTHING, SWORD, POTION};
 struct sCell {
 	eCellType type;
 	eItemType item;
-	uint16 tileId;
+	int tileId = -1;
 };
 
 struct sTileset {
@@ -29,6 +29,12 @@ struct sTileset {
 struct sObject {
 	eCellType type;
 	Vector2 position;
+};
+
+struct Player {
+	Vector2 position;
+	int width = 16;
+	int height = 16;
 };
 
 struct sLayer {

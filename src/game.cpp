@@ -18,11 +18,10 @@ GameMap* loadGameMap(const char* filename) {
 	int h = jData["height"];
 
 	GameMap* map = new GameMap(w, h);
-	//Allocate memory for data inside each layer
-
 	map->tile_width = jData["tilewidth"];
 	map->tile_height = jData["tileheight"];
 
+	// 1. CARGA ÚNICA Y DINÁMICA DE TILESETS DESDE EL JSON
 	if (jData.contains("tilesets") && jData["tilesets"].is_array()) {
 		for (auto& tsJson : jData["tilesets"]) {
 			sTileset ts;
@@ -30,32 +29,43 @@ GameMap* loadGameMap(const char* filename) {
 
 			std::string source = tsJson.value("source", "");
 
+			// Cambiamos la extensión .tsx por .png si viene de Tiled
 			size_t pos = source.find(".tsx");
 			if (pos != std::string::npos) {
 				source.replace(pos, 4, ".png");
 			}
 
+			// Concatenamos la carpeta data/
 			std::string texturePath = "data/" + source;
 			if (!ts.texture.load(texturePath.c_str())) {
-				std::cout << "[ERROR] Cannot load tileset: " << texturePath << std::endl;
+				std::cout << "[ERROR] No se pudo cargar la textura: " << texturePath << std::endl;
 			}
 
-			ts.tileWidth = map->tile_width;
-			ts.tileHeight = map->tile_height;
+			// Si en la ruta pone 16x16 ajustamos sus dimensiones de corte, si no, usa las del mapa
+			if (source.find("16x16") != std::string::npos) {
+				ts.tileWidth = 16;
+				ts.tileHeight = 16;
+			}
+			else {
+				ts.tileWidth = map->tile_width;
+				ts.tileHeight = map->tile_height;
+			}
+
 			map->tilesets.push_back(ts);
 		}
 	}
+
+	// 2. LECTURA DE CAPAS
 	int numLayers = jData["layers"].size();
 	map->numLayers = numLayers;
 	map->layers = new sLayer[numLayers];
 
 	for (int l = 0; l < numLayers; l++) {
 		json layer = jData["layers"][l];
-		//Allocate memory for data inside each layer
-		map->layers[l].name = layer["name"].get<std::string>();
+		map->layers[l].name = layer.value("name", "");
 		map->layers[l].visible = layer.value("visible", true);
 		map->layers[l].data = new sCell[w * h];
-		bool isFuncional = (map->layers[l].name == "Funcional");
+
 		if (layer.contains("data") && layer["data"].is_array()) {
 			for (int x = 0; x < map->width; x++) {
 				for (int y = 0; y < map->height; y++) {
@@ -63,13 +73,8 @@ GameMap* loadGameMap(const char* filename) {
 					int rawGid = layer["data"][index].get<int>();
 
 					sCell& cell = map->getCell(x, y, l);
-
+					// Un GID de 0 en Tiled representa transparencia/vacio
 					cell.tileId = (rawGid == 0) ? -1 : rawGid;
-
-					if (isFuncional) {
-						if (rawGid == 911) cell.type = WALL;
-						else if (rawGid == 653) cell.type = EMPTY;
-					}
 				}
 			}
 		}
@@ -104,7 +109,6 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
 	sprite.load("data/spritesheet.tga"); //example to load an sprite
-	tileset.load("data/Dungeon Gathering Free Version/Set 1.png");
 	
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
@@ -122,10 +126,12 @@ void Game::render(void)
 		return;
 	}
 
+	// Recorremos TODAS las capas. Si en el JSON 'visible' es true, se dibujará
 	for (int l = 0; l < map->numLayers; ++l) {
 		sLayer& layer = map->layers[l];
 
-		if (layer.name == "Funcional" || !layer.visible)
+		// Solo comprobamos el flag 'visible' que leímos directamente del JSON
+		if (!layer.visible)
 			continue;
 
 		for (int y = 0; y < map->height; ++y) {
@@ -133,19 +139,23 @@ void Game::render(void)
 				sCell& cell = map->getCell(x, y, l);
 				int gid = cell.tileId;
 
+				// Saltamos las celdas sin tile (-1)
 				if (gid <= 0) continue;
 
+				// Obtenemos el tileset correspondiente
 				sTileset* ts = map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
 
+				// Mapeo dinámico del tile
 				int localTileId = gid - ts->firstgid;
 				int num_tiles_x = ts->texture.width / ts->tileWidth;
 
 				int screenx = x * map->tile_width - cameraPos.x;
 				int screeny = y * map->tile_height - cameraPos.y;
 
-				if (screenx < -map->tile_width || screenx >= (int)framebuffer.width ||
-					screeny < -map->tile_height || screeny >= (int)framebuffer.height)
+				// Culling
+				if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
+					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height)
 					continue;
 
 				int tilex = (localTileId % num_tiles_x) * ts->tileWidth;
