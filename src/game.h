@@ -12,6 +12,7 @@
 
 enum eCellType: uint16 {EMPTY, START, WALL, DOOR, CHEST};
 enum eItemType: uint16 {NOTHING, SWORD, POTION};
+
 struct sCell {
 	eCellType type;
 	eItemType item;
@@ -35,6 +36,9 @@ struct Player {
 	Vector2 position;
 	int width = 16;
 	int height = 16;
+	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Down
+	int spriteFrame = 0;
+	float animTimer = 0.0f;
 };
 
 struct sLayer {

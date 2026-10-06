@@ -174,7 +174,10 @@ void Game::render(void)
 	int playerScreenX = (int)player.position.x - (int)cameraPos.x;
 	int playerScreenY = (int)player.position.y - (int)cameraPos.y;
 
-	Area playerArea(0, 0, player.width, player.height);
+	int tileX = player.spriteFrame * player.width;
+	int tileY = player.dir * player.height;
+
+	Area playerArea(tileX, tileY, player.width, player.height);
 	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 
 	showFramebuffer(&framebuffer);
@@ -182,15 +185,43 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
-	//Add here your update method
-	//...
-
+	float speed = 80.0f;
+	bool isMoving = false;
 	//Read the keyboard state, to see all the keycodes: https://wiki.libsdl.org/SDL_Keycode
 	if (Input::isKeyPressed(SDL_SCANCODE_UP)) //if key up
 	{
+		player.position.y -= speed * (float)seconds_elapsed;
+		player.dir = 3;
+		isMoving = true;
 	}
 	if (Input::isKeyPressed(SDL_SCANCODE_DOWN)) //if key down
 	{
+		player.position.y += speed * (float)seconds_elapsed;
+		player.dir = 0;
+		isMoving = true;
+	}
+	if (Input::isKeyPressed(SDL_SCANCODE_LEFT)) {
+		player.position.x -= speed * (float)seconds_elapsed;
+		player.dir = 1;
+		isMoving = true;
+	}
+	if (Input::isKeyPressed(SDL_SCANCODE_RIGHT)) {
+		player.position.x += speed * (float)seconds_elapsed;
+		player.dir = 2;
+		isMoving = true;
+	}
+
+	if(isMoving) {
+		player.animTimer += (float)seconds_elapsed;
+
+		if (player.animTimer >= 0.15f) {
+			player.spriteFrame = (player.spriteFrame + 1) % 3;
+			player.animTimer = 0.0f;
+		}
+	}
+	else {
+		player.spriteFrame = 0;
+		player.animTimer = 0.0f;
 	}
 
 	//example of 'was pressed'
