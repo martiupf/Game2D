@@ -5,6 +5,11 @@
 #ifndef GAME_H
 #define GAME_H
 
+#define TILEWIDTH 8
+#define TILEHEIGHT 8
+#define PLAYERWIDTH 16
+#define PLAYERHEIGHT 16
+
 #include "includes.h"
 #include "image.h"
 #include "utils.h"
@@ -16,15 +21,15 @@ enum eItemType: uint16 {NOTHING, SWORD, POTION};
 struct sCell {
 	eCellType type;
 	eItemType item;
-	int tileId = -1;
+	int tileId = 0; //Id from Tiled tileset maps
 };
 
 struct sTileset {
-	int firstgid = 1;
+	int firstgid = 1; //First id from this tileset
 	std::string name;
 	Image texture;
-	int tileWidth = 8;
-	int tileHeight = 8;
+	int tileWidth = TILEWIDTH;
+	int tileHeight = TILEHEIGHT;
 };
 
 struct sObject {
@@ -34,17 +39,17 @@ struct sObject {
 
 struct Player {
 	Vector2 position;
-	int width = 16;
-	int height = 16;
+	int width = PLAYERWIDTH;
+	int height = PLAYERHEIGHT;
 	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Down
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
-	std::vector<int> inputStack;
+	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
 };
 
 struct sLayer {
 	std::string name;
-	bool visible = true;
+	bool visible;
 	sCell* data;
 };
 
@@ -53,8 +58,8 @@ public:
 	int width = 0;
 	int height = 0;
 	
-	int tile_width = 8;
-	int tile_height = 8;
+	int tile_width = TILEWIDTH;
+	int tile_height = TILEHEIGHT;
 
 	int numLayers = 0;
 	sLayer* layers = nullptr;
@@ -68,18 +73,18 @@ public:
 		height = h;
 	}
 
-	sCell& getCell(int x, int y, int l) {
+	sCell& getCell(int x, int y, int l) { //Returns the id of the cell
 		return layers[l].data[x + y * width];
 	}
 
-	int getLayerIndex(const std::string& name) {
+	int getLayerIndex(const std::string& name) { //Returns the id of the layer
 		for (int i = 0;i < numLayers;i++) {
 			if (layers[i].name == name) return i;
 		}
 		return -1;
 	}
 
-	sTileset* getTilesetForGID(int gid) {
+	sTileset* getTilesetForGID(int gid) { //Gets the tileset for a GID
 		sTileset* selected = nullptr;
 		for (auto& ts : tilesets) {
 			if (gid >= ts.firstgid) {

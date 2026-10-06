@@ -26,26 +26,20 @@ GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 			sTileset ts;
 			ts.firstgid = tsJson.value("firstgid", 1);
 
-			std::string source = tsJson.value("source", "");
+			std::string source = tsJson.value("source", ""); //Gets the source of the tsx specified in the json file
 
 			size_t pos = source.find(".tsx");
 			if (pos != std::string::npos) {
-				source.replace(pos, 4, ".png");
+				source.replace(pos, 4, ".png"); //This means that the png must be in the same file as the tsx
 			}
 
 			std::string texturePath = "data/" + source;
 			if (!ts.texture.load(texturePath.c_str())) {
-				std::cout << "[ERROR] No se pudo cargar la textura: " << texturePath << std::endl;
+				std::cout << "[ERROR] Could not load the texture: " << texturePath << std::endl;
 			}
 
-			if (source.find("16x16") != std::string::npos) {
-				ts.tileWidth = 16;
-				ts.tileHeight = 16;
-			}
-			else {
-				ts.tileWidth = map->tile_width;
-				ts.tileHeight = map->tile_height;
-			}
+			ts.tileWidth = map->tile_width;
+			ts.tileHeight = map->tile_height; //Tile mesures can be wrong for the character sprites
 
 			map->tilesets.push_back(ts);
 		}
@@ -72,15 +66,13 @@ GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 			for (int y = 0; y < map->height; y++) {
 				for (int x = 0; x < map->width; x++) {
 					int index = x + y * map->width;
-					int rawGid = layer["data"][index].get<int>();
+					int rawGid = layer["data"][index].get<int>(); //Gets de GID
 
 					sCell& cell = map->getCell(x, y, l);
-					cell.tileId = (rawGid == 0) ? -1 : rawGid;
+					cell.tileId = rawGid;
 
-					// Si estamos en la capa de Player y encontramos el tile de Spawn
 					if ((layerName == "Player" || layerName == "player") && rawGid == 2673) {
-						// Guardamos las coordenadas en PÍXELES
-						outSpawnPos.x = (float)(x * map->tile_width);
+						outSpawnPos.x = (float)(x * map->tile_width); //We take the player starting position
 						outSpawnPos.y = (float)(y * map->tile_height);
 					}
 				}
@@ -119,8 +111,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
-	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //example to load an sprite
-	
+	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -153,15 +144,15 @@ void Game::render(void)
 				sTileset* ts = map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
 
-				int localTileId = gid - ts->firstgid;
-				int num_tiles_x = ts->texture.width / ts->tileWidth;
-
 				int screenx = x * map->tile_width - cameraPos.x;
 				int screeny = y * map->tile_height - cameraPos.y;
 
 				if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
-					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height)
+					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height) //Frustum culling in case the cell is out of the screen
 					continue;
+
+				int localTileId = gid - ts->firstgid;
+				int num_tiles_x = ts->texture.width / ts->tileWidth;
 
 				int tilex = (localTileId % num_tiles_x) * ts->tileWidth;
 				int tiley = (localTileId / num_tiles_x) * ts->tileHeight;
@@ -174,8 +165,8 @@ void Game::render(void)
 	int playerScreenX = (int)player.position.x - (int)cameraPos.x;
 	int playerScreenY = (int)player.position.y - (int)cameraPos.y;
 
-	int tileX = player.spriteFrame * player.width;
-	int tileY = player.dir * player.height;
+	int tileX = player.spriteFrame * player.width; //Changes the animation sprite
+	int tileY = player.dir * player.height; //Choose the direction of the player
 
 	Area playerArea(tileX, tileY, player.width, player.height);
 	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
@@ -187,13 +178,15 @@ void Game::update(double seconds_elapsed)
 {
 	float speed = 80.0f;
 
-	auto processKey = [&](bool isPressed, int dir) {
+	auto processKey = [&](bool isPressed, int dir) { //Adds and extracts directions to the stack
 		if (isPressed) {
+			//Only adds the key when is not already in the stack
 			if (std::find(player.inputStack.begin(), player.inputStack.end(), dir) == player.inputStack.end()) {
 				player.inputStack.push_back(dir);
 			}
 		}
 		else {
+			//If the key is up, this code erases it from the stack
 			auto it = std::find(player.inputStack.begin(), player.inputStack.end(), dir);
 			if (it != player.inputStack.end()) {
 				player.inputStack.erase(it);
@@ -228,17 +221,12 @@ void Game::update(double seconds_elapsed)
 			break;
 		}
 	}
-
+	player.animTimer += (float)seconds_elapsed;
 	if (isMoving) {
-		player.animTimer += (float)seconds_elapsed;
 		if (player.animTimer >= 0.15f) {
-			player.spriteFrame = (player.spriteFrame + 1) % 3;
+			player.spriteFrame = (player.spriteFrame + 1) % 3; //Every 150 miliseconds if the player is moving we change the animation
 			player.animTimer = 0.0f;
 		}
-	}
-	else {
-		player.spriteFrame = 0;
-		player.animTimer = 0.0f;
 	}
 }
 

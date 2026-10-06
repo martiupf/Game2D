@@ -1,8 +1,8 @@
 {
     "activeFile": "Mapa.tmx",
     "expandedProjectPaths": [
-        "Dungeon Gathering Free Version",
-        "."
+        ".",
+        "Dungeon Gathering Free Version"
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
@@ -19,11 +19,11 @@
             "scaleInEditor": 4
         },
         "Mapa.tmx": {
-            "scale": 4,
+            "scale": 3,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 101,
-                "y": 46.625
+                "x": 68.33333333333331,
+                "y": -0.1666666666666714
             }
         }
     },
@@ -36,17 +36,14 @@
     "map.tileWidth": 8,
     "map.width": 20,
     "openFiles": [
-        "Mapa.tmx",
-        "Dungeon Gathering Free Version/Set 1.tsx",
-        "03-soldier.tsx",
-        "16x16-RPG-characters/preview.tsx"
+        "Mapa.tmx"
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
-        "16x16-RPG-characters/preview.tsx",
+        "Mapa.tmx",
         "03-soldier.tsx",
         "Dungeon Gathering Free Version/Set 1.tsx",
-        "Mapa.tmx"
+        "16x16-RPG-characters/preview.tsx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
