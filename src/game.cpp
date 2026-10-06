@@ -21,7 +21,6 @@ GameMap* loadGameMap(const char* filename) {
 	map->tile_width = jData["tilewidth"];
 	map->tile_height = jData["tileheight"];
 
-	// 1. CARGA ÚNICA Y DINÁMICA DE TILESETS DESDE EL JSON
 	if (jData.contains("tilesets") && jData["tilesets"].is_array()) {
 		for (auto& tsJson : jData["tilesets"]) {
 			sTileset ts;
@@ -29,19 +28,16 @@ GameMap* loadGameMap(const char* filename) {
 
 			std::string source = tsJson.value("source", "");
 
-			// Cambiamos la extensión .tsx por .png si viene de Tiled
 			size_t pos = source.find(".tsx");
 			if (pos != std::string::npos) {
 				source.replace(pos, 4, ".png");
 			}
 
-			// Concatenamos la carpeta data/
 			std::string texturePath = "data/" + source;
 			if (!ts.texture.load(texturePath.c_str())) {
 				std::cout << "[ERROR] No se pudo cargar la textura: " << texturePath << std::endl;
 			}
 
-			// Si en la ruta pone 16x16 ajustamos sus dimensiones de corte, si no, usa las del mapa
 			if (source.find("16x16") != std::string::npos) {
 				ts.tileWidth = 16;
 				ts.tileHeight = 16;
@@ -55,7 +51,6 @@ GameMap* loadGameMap(const char* filename) {
 		}
 	}
 
-	// 2. LECTURA DE CAPAS
 	int numLayers = jData["layers"].size();
 	map->numLayers = numLayers;
 	map->layers = new sLayer[numLayers];
@@ -73,7 +68,6 @@ GameMap* loadGameMap(const char* filename) {
 					int rawGid = layer["data"][index].get<int>();
 
 					sCell& cell = map->getCell(x, y, l);
-					// Un GID de 0 en Tiled representa transparencia/vacio
 					cell.tileId = (rawGid == 0) ? -1 : rawGid;
 				}
 			}
@@ -126,11 +120,9 @@ void Game::render(void)
 		return;
 	}
 
-	// Recorremos TODAS las capas. Si en el JSON 'visible' es true, se dibujará
 	for (int l = 0; l < map->numLayers; ++l) {
 		sLayer& layer = map->layers[l];
 
-		// Solo comprobamos el flag 'visible' que leímos directamente del JSON
 		if (!layer.visible)
 			continue;
 
@@ -139,21 +131,17 @@ void Game::render(void)
 				sCell& cell = map->getCell(x, y, l);
 				int gid = cell.tileId;
 
-				// Saltamos las celdas sin tile (-1)
 				if (gid <= 0) continue;
 
-				// Obtenemos el tileset correspondiente
 				sTileset* ts = map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
 
-				// Mapeo dinámico del tile
 				int localTileId = gid - ts->firstgid;
 				int num_tiles_x = ts->texture.width / ts->tileWidth;
 
 				int screenx = x * map->tile_width - cameraPos.x;
 				int screeny = y * map->tile_height - cameraPos.y;
 
-				// Culling
 				if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
 					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height)
 					continue;
