@@ -24,6 +24,25 @@ bool GameMap::isWallAtPosition(float worldX, float worldY) {
 	return (this->layers[layerIdx].data[tileY*this->width + tileX].type == WALL);
 }
 
+bool Game::bulletIsActive(Bullet b) {
+	int offsetX, offsetY, width, height;
+	if (b.dirX != 0) {
+		offsetX = 0; offsetY = 3;
+		width = 10; height = 4;
+
+	}
+	else if (b.dirY != 0) {
+		offsetX = 3; offsetY = 0;
+		width = 4; height = 10;
+	}
+	else return false;
+	if (this->map->isWallAtPosition(b.x+offsetX, b.y+offsetY)) return false;
+	if (this->map->isWallAtPosition(b.x+offsetX+width-1, b.y + offsetY)) return false;
+	if (this->map->isWallAtPosition(b.x + offsetX, b.y + offsetY + height-1)) return false;
+	if (this->map->isWallAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1)) return false;
+	return true;
+}
+
 GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 	using json = nlohmann::json;
 	std::ifstream f(filename);
@@ -147,7 +166,7 @@ void Game::shootBullet() {
 	float bulletHeight = 10.0f;
 	float spawnOffset = 8.0f;
 
-	newBullet.speed = 250.0f;
+	newBullet.speed = 50.0f;
 	newBullet.active = true;
 
 	switch (player.dir) {
@@ -171,9 +190,7 @@ void Game::updateBullets(float seconds_elapsed) {
 		b.x += b.dirX * b.speed * seconds_elapsed;
 		b.y += b.dirY * b.speed * seconds_elapsed;
 
-		if (map->isWallAtPosition(b.x, b.y)) {
-			b.active = false;
-		}
+		b.active = bulletIsActive(b);
 	}
 
 	player.playerBullets.erase(
@@ -496,9 +513,9 @@ void Game::onAudio(float *buffer, unsigned int len, double time, SDL_AudioSpec& 
 
 bool Game::checkPlayerCollision(float nextX, float nextY)
 {
-	float offsetX = 3.0f;
+	float offsetX = 4.0f;
 	float offsetY = 10.0f;
-	float width = 10.0f;
+	float width = 8.0f;
 	float height = 6.0f;
 
 	float left = nextX + offsetX;

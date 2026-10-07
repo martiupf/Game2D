@@ -1,8 +1,12 @@
 {
     "activeFile": "Mapa.json",
     "expandedProjectPaths": [
+        ".",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow",
         "Dungeon Gathering Free Version",
-        "."
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3"
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
@@ -18,7 +22,7 @@
         },
         "Dungeon Gathering Free Version/Set 1.tsx": {
             "dynamicWrapping": false,
-            "scaleInDock": 8,
+            "scaleInDock": 0.75,
             "scaleInEditor": 4
         },
         "Mapa.json": {
@@ -34,13 +38,17 @@
             "selectedLayer": 3,
             "viewCenter": {
                 "x": 173,
-                "y": 39.99999999999999
+                "y": 48.49999999999999
             }
+        },
+        "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 2
         },
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx": {
             "dynamicWrapping": false,
-            "scaleInDock": 1.5,
-            "scaleInEditor": 1
+            "scaleInDock": 4,
+            "scaleInEditor": 2
         }
     },
     "last.exportedFilePath": "C:/Users/neise/Desktop/neisee/UNI/TJE_Framework_2D/data",
@@ -54,11 +62,13 @@
     "openFiles": [
         "Mapa.tmx",
         "Mapa.json",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx"
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",
+        "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx"
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
         "Mapa.tmx",
+        "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",
         "Mapa.json",
         "03-soldier.tsx",
