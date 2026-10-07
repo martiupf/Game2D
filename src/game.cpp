@@ -29,7 +29,6 @@ bool Game::bulletIsActive(Bullet b) {
 	if (b.dirX != 0) {
 		offsetX = 0; offsetY = 3;
 		width = 10; height = 4;
-
 	}
 	else if (b.dirY != 0) {
 		offsetX = 3; offsetY = 0;
@@ -176,9 +175,16 @@ void Game::shootBullet() {
 	case 2: newBullet.dirX = 1.0f; newBullet.dirY = 0.0f; break;
 	default: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
 	}
+	
 
-	newBullet.x = (player.position.x + (player.width / 2.0f) - (bulletWidth / 2.0f)) + (newBullet.dirX * spawnOffset);
-	newBullet.y = (player.position.y + (player.height / 2.0f) - (bulletHeight / 2.0f)) + (newBullet.dirY * spawnOffset);
+	//Extracted from the hitbox of checkPlayerCollision
+	float offsetX = 4.0f;
+	float offsetY = 10.0f;
+	float width = 8.0f;
+	float height = 6.0f;
+
+	newBullet.x = (player.position.x + offsetX + (width / 2.0f) - (bulletWidth / 2.0f)) + (newBullet.dirX * spawnOffset);
+	newBullet.y = (player.position.y + offsetY + (height / 2.0f) - (bulletHeight / 2.0f)) + (newBullet.dirY * spawnOffset);
 
 	player.playerBullets.push_back(newBullet);
 }
