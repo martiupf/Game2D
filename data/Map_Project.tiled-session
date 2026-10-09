@@ -26,11 +26,11 @@
             "scaleInEditor": 4
         },
         "Mapa.json": {
-            "scale": 4,
-            "selectedLayer": 4,
+            "scale": 2,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 112.25,
-                "y": 59.75
+                "x": 104,
+                "y": 96.25
             }
         },
         "Mapa.tmx": {
@@ -67,10 +67,10 @@
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
-        "Mapa.tmx",
         "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",
         "Mapa.json",
+        "Mapa.tmx",
         "03-soldier.tsx",
         "Dungeon Gathering Free Version/Set 1.tsx",
         "16x16-RPG-characters/preview.tsx"

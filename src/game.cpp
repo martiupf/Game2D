@@ -129,6 +129,7 @@ Image sprite;
 Image tileset;
 Color bgcolor(130, 80, 100);
 Image bulletImage;
+Image heartImage;
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
 {
@@ -153,6 +154,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
 	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
 	bulletImage.load("data/pixil-frame-0.png");
+	heartImage.load("data/hearts.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -298,6 +300,8 @@ void Game::render(void)
 	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 
 	renderBullets(framebuffer);
+
+	renderHearts(framebuffer);
 
 	showFramebuffer(&framebuffer);
 }
@@ -597,5 +601,22 @@ void Game::teleport() {
 			player.teleportCooldown = 3.0f; // <-- Inicia los 5 segundos de cooldown
 			break;
 		}
+	}
+}
+
+void Game::renderHearts(Image& framebuffer) {
+	int hearts_drawn = 0;
+	int screenX = 0;
+	for (int i = 0; i < player.health; i++) {
+		Area area(7, 0, 7, 7);
+		framebuffer.drawImage(heartImage, screenX, 0, area);
+		screenX += 7;
+		hearts_drawn += 1;
+	}
+	while (hearts_drawn < 3) {
+		Area area(0, 0, 7, 7);
+		framebuffer.drawImage(heartImage, screenX, 0, area);
+		screenX += 7;
+		hearts_drawn += 1;
 	}
 }

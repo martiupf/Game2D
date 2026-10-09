@@ -52,6 +52,7 @@ struct Player {
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
 	float teleportCooldown = 0.0f;
+	int health = 3;
 	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
 	std::vector<Bullet> playerBullets;
 };
@@ -162,6 +163,7 @@ public:
 	void updateBullets(float seconds_elapsed);
 	void renderBullets(Image& framebuffer);
 	bool checkPlayerCollision(float nextX, float nextY);
+	void renderHearts(Image& framebuffer);
 };
 
 
