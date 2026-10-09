@@ -606,16 +606,16 @@ void Game::teleport() {
 
 void Game::renderHearts(Image& framebuffer) {
 	int hearts_drawn = 0;
-	int screenX = 0;
+	int screenX = 1;
 	for (int i = 0; i < player.health; i++) {
 		Area area(7, 0, 7, 7);
-		framebuffer.drawImage(heartImage, screenX, 0, area);
+		framebuffer.drawImage(heartImage, screenX, 1, area);
 		screenX += 7;
 		hearts_drawn += 1;
 	}
 	while (hearts_drawn < 3) {
 		Area area(0, 0, 7, 7);
-		framebuffer.drawImage(heartImage, screenX, 0, area);
+		framebuffer.drawImage(heartImage, screenX, 1, area);
 		screenX += 7;
 		hearts_drawn += 1;
 	}
