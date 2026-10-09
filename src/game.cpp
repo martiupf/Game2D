@@ -301,6 +301,8 @@ void Game::render(void)
 
 	renderBullets(framebuffer);
 
+	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180)); // Rojo
+
 	renderHearts(framebuffer);
 
 	showFramebuffer(&framebuffer);

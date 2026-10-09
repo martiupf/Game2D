@@ -1,12 +1,12 @@
 {
-    "activeFile": "Mapa.json",
+    "activeFile": "Mapa.tmx",
     "expandedProjectPaths": [
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3",
+        "Dungeon Gathering Free Version",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow",
-        ".",
-        "Dungeon Gathering Free Version",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art"
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art",
+        "."
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
@@ -37,8 +37,8 @@
             "scale": 3,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 173,
-                "y": 48.49999999999999
+                "x": 76.66666666666667,
+                "y": 53.16666666666666
             }
         },
         "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx": {
@@ -60,17 +60,14 @@
     "map.tileWidth": 8,
     "map.width": 20,
     "openFiles": [
-        "Mapa.tmx",
-        "Mapa.json",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",
-        "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx"
+        "Mapa.tmx"
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
+        "Mapa.tmx",
         "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",
         "Mapa.json",
-        "Mapa.tmx",
         "03-soldier.tsx",
         "Dungeon Gathering Free Version/Set 1.tsx",
         "16x16-RPG-characters/preview.tsx"
