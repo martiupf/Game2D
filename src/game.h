@@ -51,6 +51,7 @@ struct Player {
 	int dir = 0; //0=Down, 1=Left, 2=Right, 3=Up
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
+	float teleportCooldown = 0.0f;
 	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
 	std::vector<Bullet> playerBullets;
 };
@@ -112,7 +113,7 @@ class Game
 {
 public:
 	static Game* instance;
-	GameMap* map = nullptr;
+	GameMap* actual_map = nullptr;
 	//window
 	SDL_Window* window;
 	SDL_Renderer* renderer;
@@ -157,6 +158,7 @@ public:
 	void enableAudio(); //opens audio channel to play sound
 	void onAudio(float* buffer, unsigned int len, double time, SDL_AudioSpec &audio_spec); //called constantly to fill the audio buffer
 	void shootBullet();
+	void teleport();
 	void updateBullets(float seconds_elapsed);
 	void renderBullets(Image& framebuffer);
 	bool checkPlayerCollision(float nextX, float nextY);

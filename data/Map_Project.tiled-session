@@ -1,18 +1,18 @@
 {
     "activeFile": "Mapa.json",
     "expandedProjectPaths": [
-        ".",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow",
+        ".",
         "Dungeon Gathering Free Version",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3"
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art"
     ],
     "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
         "03-soldier.tsx": {
             "dynamicWrapping": false,
-            "scaleInDock": 5.5,
+            "scaleInDock": 8,
             "scaleInEditor": 8
         },
         "16x16-RPG-characters/preview.tsx": {
@@ -29,8 +29,8 @@
             "scale": 4,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 91.5,
-                "y": 64.625
+                "x": 112.25,
+                "y": 59.75
             }
         },
         "Mapa.tmx": {

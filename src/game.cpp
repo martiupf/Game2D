@@ -35,10 +35,10 @@ bool Game::bulletIsActive(Bullet b) {
 		width = 4; height = 10;
 	}
 	else return false;
-	if (this->map->isWallAtPosition(b.x+offsetX, b.y+offsetY)) return false;
-	if (this->map->isWallAtPosition(b.x+offsetX+width-1, b.y + offsetY)) return false;
-	if (this->map->isWallAtPosition(b.x + offsetX, b.y + offsetY + height-1)) return false;
-	if (this->map->isWallAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1)) return false;
+	if (this->actual_map->isWallAtPosition(b.x+offsetX, b.y+offsetY)) return false;
+	if (this->actual_map->isWallAtPosition(b.x+offsetX+width-1, b.y + offsetY)) return false;
+	if (this->actual_map->isWallAtPosition(b.x + offsetX, b.y + offsetY + height-1)) return false;
+	if (this->actual_map->isWallAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1)) return false;
 	return true;
 }
 
@@ -140,7 +140,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	must_exit = false;
 
 	Vector2 spawnPos(0, 0);
-	map = loadGameMap("data/Mapa.json", spawnPos);
+	actual_map = loadGameMap("data/Mapa.json", spawnPos);
 	this->spawnPos = spawnPos;
 	this->player.position = spawnPos;
 	
@@ -165,7 +165,7 @@ void Game::shootBullet() {
 	float bulletHeight = 10.0f;
 	float spawnOffset = 8.0f;
 
-	newBullet.speed = 50.0f;
+	newBullet.speed = 250.0f;
 	newBullet.active = true;
 
 	switch (player.dir) {
@@ -244,29 +244,29 @@ void Game::render(void)
 	Image framebuffer(160, 120);
 	framebuffer.fill(bgcolor);
 
-	if (!map || map->numLayers == 0) {
+	if (!actual_map || actual_map->numLayers == 0) {
 		showFramebuffer(&framebuffer);
 		return;
 	}
 
-	for (int l = 0; l < map->numLayers; ++l) {
-		sLayer& layer = map->layers[l];
+	for (int l = 0; l < actual_map->numLayers; ++l) {
+		sLayer& layer = actual_map->layers[l];
 
 		if (!layer.visible)
 			continue;
 
-		for (int y = 0; y < map->height; ++y) {
-			for (int x = 0; x < map->width; ++x) {
-				sCell& cell = map->getCell(x, y, l);
+		for (int y = 0; y < actual_map->height; ++y) {
+			for (int x = 0; x < actual_map->width; ++x) {
+				sCell& cell = actual_map->getCell(x, y, l);
 				int gid = cell.tileId;
 
 				if (gid <= 0) continue;
 
-				sTileset* ts = map->getTilesetForGID(gid);
+				sTileset* ts = actual_map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
 
-				int screenx = x * map->tile_width - cameraPos.x;
-				int screeny = y * map->tile_height - cameraPos.y;
+				int screenx = x * actual_map->tile_width - cameraPos.x;
+				int screeny = y * actual_map->tile_height - cameraPos.y;
 
 				if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
 					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height) //Frustum culling in case the cell is out of the screen
@@ -286,9 +286,14 @@ void Game::render(void)
 	int playerScreenX = (int)player.position.x - (int)cameraPos.x;
 	int playerScreenY = (int)player.position.y - (int)cameraPos.y;
 
-	int tileX = player.spriteFrame * player.width; //Changes the animation sprite
-	int tileY = player.dir * player.height; //Choose the direction of the player
+	int spriteFrame = player.spriteFrame;
+	if (player.teleportCooldown > 0.0f) {
+		spriteFrame += 6;
+	}
 
+	int tileX = spriteFrame * player.width; //Changes the animation sprite
+	int tileY = player.dir * player.height; //Choose the direction of the player
+	
 	Area playerArea(tileX, tileY, player.width, player.height);
 	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 
@@ -299,6 +304,14 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
+
+	if (player.teleportCooldown > 0.0f) {
+		player.teleportCooldown -= (float)seconds_elapsed;
+		if (player.teleportCooldown < 0.0f) {
+			player.teleportCooldown = 0.0f;
+		}
+	}
+
 	float speed = 80.0f;
 
 	updateBullets(seconds_elapsed);
@@ -367,6 +380,9 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
 		case SDLK_z:
 			shootBullet();
+			break;
+		case SDLK_x:
+			teleport();
 			break;
 	}
 }
@@ -529,10 +545,57 @@ bool Game::checkPlayerCollision(float nextX, float nextY)
 	float top = nextY + offsetY;
 	float bottom = nextY + offsetY + height - 1.0f;
 
-	if (map->isWallAtPosition(left, top))     return true;
-	if (map->isWallAtPosition(right, top))    return true;
-	if (map->isWallAtPosition(left, bottom))  return true;
-	if (map->isWallAtPosition(right, bottom)) return true;
+	if (actual_map->isWallAtPosition(left, top))     return true;
+	if (actual_map->isWallAtPosition(right, top))    return true;
+	if (actual_map->isWallAtPosition(left, bottom))  return true;
+	if (actual_map->isWallAtPosition(right, bottom)) return true;
 
 	return false;
+}
+
+void Game::teleport() {
+	if (!actual_map) return;
+
+	// Si está en cooldown, no permite usar el TP
+	if (player.teleportCooldown > 0.0f) return;
+
+	int maxPixels = 3 * actual_map->tile_width;
+
+	Vector2 dirVec(0.0f, 0.0f);
+	switch (player.dir) {
+	case 0: dirVec.y = 1.0f;  break;
+	case 1: dirVec.x = -1.0f; break;
+	case 2: dirVec.x = 1.0f;  break;
+	case 3: dirVec.y = -1.0f; break;
+	}
+
+	float mapWidthPx = (float)(actual_map->width * actual_map->tile_width);
+	float mapHeightPx = (float)(actual_map->height * actual_map->tile_height);
+
+	float offsetX = 4.0f;
+	float offsetY = 10.0f;
+	float width = 8.0f;
+	float height = 6.0f;
+
+	for (int step = maxPixels; step >= 1; --step) {
+		Vector2 candidatePos(
+			player.position.x + dirVec.x * (float)step,
+			player.position.y + dirVec.y * (float)step
+		);
+
+		float left = candidatePos.x + offsetX;
+		float right = candidatePos.x + offsetX + width - 1.0f;
+		float top = candidatePos.y + offsetY;
+		float bottom = candidatePos.y + offsetY + height - 1.0f;
+
+		if (left < 0.0f || right >= mapWidthPx || top < 0.0f || bottom >= mapHeightPx) {
+			continue;
+		}
+
+		if (!checkPlayerCollision(candidatePos.x, candidatePos.y)) {
+			player.position = candidatePos;
+			player.teleportCooldown = 3.0f; // <-- Inicia los 5 segundos de cooldown
+			break;
+		}
+	}
 }
