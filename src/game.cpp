@@ -154,6 +154,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	heartImage.load("data/hearts.png");
 	titleImage.load("data/start_screen.png");
 	enemyImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_walk_without_shadow.png");
+	fireballImage.load("data/fireball_como_el_pitbull.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -322,6 +323,7 @@ void Game::render(void)
 	}
 
 	// --- RENDERIZAR ENEMIGOS ---
+	renderFireballs(framebuffer);
 	renderEnemies(framebuffer); // <-- AÑADIDO
 
 	renderBullets(framebuffer);
@@ -354,6 +356,7 @@ void Game::update(double seconds_elapsed)
 
 	updateBullets(seconds_elapsed);
 	updateEnemies((float)seconds_elapsed);
+	updateFireballs((float)seconds_elapsed);
 
 	checkBulletEnemyCollisions();
 
@@ -710,7 +713,11 @@ bool Game::checkEnemyCollision(const Enemy& e, float nextX, float nextY) {
 	return false;
 }
 
+float fireball_timer = 1.0f;
+
 void Game::updateEnemies(float seconds_elapsed) {
+
+	fireball_timer -= seconds_elapsed;
 	// Hitbox del jugador
 	float playerHitX = player.position.x + player.offsetX;
 	float playerHitY = player.position.y + player.offsetY;
@@ -744,6 +751,10 @@ void Game::updateEnemies(float seconds_elapsed) {
 		if (e.animTimer >= 0.15f) {
 			e.spriteFrame = (e.spriteFrame + 1) % 6;
 			e.animTimer = 0.0f;
+		}
+		if (fireball_timer <= 0) {
+			generateFireball(e.position.x + e.width / 2, e.position.y + e.height / 2, 0, 1);
+			fireball_timer = 1;
 		}
 	}
 }
@@ -796,5 +807,95 @@ void Game::checkBulletEnemyCollisions() {
 				break;
 			}
 		}
+	}
+}
+
+void Game::generateFireball(float positionX, float positionY, float dirX, float dirY) {
+	Fireball fb;
+	fb.position = Vector2(positionX, positionY);
+
+	float length = std::sqrt(dirX * dirX + dirY * dirY);
+	if (length > 0.0f) {
+		fb.dir = Vector2(dirX / length, dirY / length);
+	}
+	else {
+		fb.dir = Vector2(0.0f, 1.0f);
+	}
+
+	fb.active = true;
+
+	fireballs.push_back(fb);
+}
+
+bool Game::checkFireballWallCollision(const Fireball& fb) {
+	if (!actual_map) return false;
+
+	float left = fb.position.x + fb.hitOffsetX;
+	float right = fb.position.x + fb.hitOffsetX + fb.hitWidth - 1.0f;
+	float top = fb.position.y + fb.hitOffsetY;
+	float bottom = fb.position.y + fb.hitOffsetY + fb.hitHeight - 1.0f;
+
+	if (actual_map->isWallAtPosition(left, top))     return true;
+	if (actual_map->isWallAtPosition(right, top))    return true;
+	if (actual_map->isWallAtPosition(left, bottom))  return true;
+	if (actual_map->isWallAtPosition(right, bottom)) return true;
+
+	return false;
+}
+
+void Game::updateFireballs(float seconds_elapsed) {
+
+	for (auto& fb : fireballs) {
+		if (!fb.active) continue;
+
+		// 1. Mover la bola de fuego según dirección y velocidad
+		fb.position.x += fb.dir.x * fb.speed * seconds_elapsed;
+		fb.position.y += fb.dir.y * fb.speed * seconds_elapsed;
+
+		// 2. Colisión con paredes
+		if (checkFireballWallCollision(fb)) {
+			fb.active = false;
+			continue;
+		}
+
+		// 3. Colisión con el jugador (si no es invulnerable ni está en teleport)
+		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
+			float fbHitX = fb.position.x + fb.hitOffsetX;
+			float fbHitY = fb.position.y + fb.hitOffsetY;
+
+			if (checkAABBCollision(player.position.x + player.offsetX, player.position.y + player.offsetY, player.hitWidth, player.hitWidth,
+				fbHitX, fbHitY, (float)fb.hitWidth, (float)fb.hitHeight)) {
+				player.health -= 1;
+				player.invincibilityTimer = 2.0f;
+				fb.active = false;
+			}
+		}
+	}
+
+	// 4. Eliminar del vector las bolas de fuego desactivadas
+	fireballs.erase(
+		std::remove_if(fireballs.begin(), fireballs.end(), [](const Fireball& fb) {
+			return !fb.active;
+			}),
+		fireballs.end()
+	);
+}
+
+void Game::renderFireballs(Image& framebuffer) {
+	for (const auto& fb : fireballs) {
+		if (!fb.active) continue;
+
+		// 1. Transformar posición del mundo a posición de pantalla
+		int screenX = (int)(fb.position.x - cameraPos.x);
+		int screenY = (int)(fb.position.y - cameraPos.y);
+
+		// 2. Frustum Culling (no dibujar si está fuera de la pantalla)
+		// Usamos fb.width y height
+		if (screenX < -fb.width || screenX > framebuffer.width ||
+			screenY < -fb.height || screenY > framebuffer.height) {
+			continue;
+		}
+		Area area(0, 0, fb.width, fb.height);
+		framebuffer.drawImage(fireballImage, screenX, screenY, area);
 	}
 }

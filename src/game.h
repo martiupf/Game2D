@@ -103,6 +103,20 @@ struct Player {
 	std::vector<Bullet> playerBullets;
 };
 
+struct Fireball {
+	Vector2 position;
+	Vector2 dir;
+	int width = 4;
+	int height = 4;
+	int hitOffsetX = 2;
+	int hitOffsetY = 2;
+	int hitWidth = 2;
+	int hitHeight = 2;
+
+	float speed = 120.0f;
+	bool active = true;
+};
+
 struct sLayer {
 	std::string name;
 	bool visible;
@@ -162,6 +176,8 @@ public:
 
 	Image enemyImage;
 	std::vector<Enemy> enemies;
+	Image fireballImage;
+	std::vector<Fireball> fireballs;
 
 	static Game* instance;
 	eGameState state = START_SCREEN;
@@ -222,6 +238,10 @@ public:
 	bool checkAABBCollision(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2);
 
 	void checkBulletEnemyCollisions();
+	void generateFireball(float positionX, float positionY, float dirX, float dirY);
+	void updateFireballs(float seconds_elapsed);
+	bool checkFireballWallCollision(const Fireball& fb);
+	void renderFireballs(Image& framebuffer);
 };
 
 
