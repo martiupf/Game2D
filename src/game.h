@@ -47,6 +47,10 @@ struct Bullet {
 	float dirX, dirY;
 	float speed;
 	bool active;
+	int bulletWidth;
+	int bulletHeight;
+	int offsetX;
+	int offsetY;
 };
 
 struct Enemy {
@@ -58,6 +62,17 @@ struct Enemy {
 	bool active = true;
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
+	int health = 5;
+
+	float pOffsetX = 24.0f;
+	float pOffsetY = 15.0f;
+	float hitWidth = 16.0f;
+	float hitHeight = 25.0f;
+
+	float bOffsetX = 20.0f;
+	float bOffsetY = 11.0f;
+	float impactWidth = 24.0f;
+	float impactHeight = 33.0f;
 };
 
 struct Player {
@@ -78,6 +93,11 @@ struct Player {
 
 	int health = 3;
 	float invincibilityTimer = 0.0f;
+
+	float offsetX = 4.0f;
+	float offsetY = 3.0f;
+	float hitWidth = 8.0f;
+	float hitHeight = 11.0f;
 
 	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
 	std::vector<Bullet> playerBullets;
@@ -198,8 +218,10 @@ public:
 
 	void updateEnemies(float seconds_elapsed);
 	void renderEnemies(Image& framebuffer);
-	bool checkEnemyCollision(float nextX, float nextY);
+	bool checkEnemyCollision(const Enemy& e, float nextX, float nextY);
 	bool checkAABBCollision(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2);
+
+	void checkBulletEnemyCollisions();
 };
 
 

@@ -42,7 +42,7 @@ bool Game::bulletIsActive(Bullet b) {
 	return true;
 }
 
-GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
+GameMap* loadGameMap(const char* filename) {
 	using json = nlohmann::json;
 	std::ifstream f(filename);
 	if (!f.good())
@@ -106,11 +106,7 @@ GameMap* loadGameMap(const char* filename, Vector2& outSpawnPos) {
 					sCell& cell = map->getCell(x, y, l);
 					cell.tileId = rawGid;
 
-					if ((layerName == "Player" || layerName == "player") && rawGid == CHARACTER_SPRITE_GID) {
-						outSpawnPos.x = (float)(x * map->tile_width); //We take the player starting position
-						outSpawnPos.y = (float)(y * map->tile_height);
-					}
-					else if (layerName == "Funcional" || layerName == "funcional") {
+					if (layerName == "Funcional" || layerName == "funcional") {
 						if (rawGid == 0) cell.type = EMPTY;
 						else if (rawGid == WALL_GID) cell.type = WALL;
 					}
@@ -141,8 +137,8 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	instance = this;
 	must_exit = false;
 
-	Vector2 spawnPos(0, 0);
-	actual_map = loadGameMap("data/Mapa.json", spawnPos);
+	Vector2 spawnPos(8, 96);
+	actual_map = loadGameMap("data/Mapa.json");
 	this->spawnPos = spawnPos;
 	this->player.position = spawnPos;
 	
@@ -178,10 +174,10 @@ void Game::shootBullet() {
 	newBullet.active = true;
 
 	switch (player.dir) {
-	case 3: newBullet.dirX = 0.0f; newBullet.dirY = -1.0f; break;
-	case 0: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
-	case 1: newBullet.dirX = -1.0f; newBullet.dirY = 0.0f; break;
-	case 2: newBullet.dirX = 1.0f; newBullet.dirY = 0.0f; break;
+	case 3: newBullet.dirX = 0.0f; newBullet.dirY = -1.0f; newBullet.bulletWidth = 4; newBullet.bulletHeight = 10; newBullet.offsetX = 3; newBullet.offsetY = 0; break;
+	case 0: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; newBullet.bulletWidth = 4; newBullet.bulletHeight = 10; newBullet.offsetX = 3; newBullet.offsetY = 0; break;
+	case 1: newBullet.dirX = -1.0f; newBullet.dirY = 0.0f; newBullet.bulletWidth = 10; newBullet.bulletHeight = 4; newBullet.offsetX = 0; newBullet.offsetY = 3; break;
+	case 2: newBullet.dirX = 1.0f; newBullet.dirY = 0.0f; newBullet.bulletWidth = 10; newBullet.bulletHeight = 4; newBullet.offsetX = 0; newBullet.offsetY = 3; break;
 	default: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
 	}
 	
@@ -358,6 +354,8 @@ void Game::update(double seconds_elapsed)
 
 	updateBullets(seconds_elapsed);
 	updateEnemies((float)seconds_elapsed);
+
+	checkBulletEnemyCollisions();
 
 	if (player.isTeleporting) {
 		player.teleportElapsed += (float)seconds_elapsed;
@@ -630,7 +628,7 @@ void Game::teleport() {
 	// Si está en cooldown, no permite usar el TP
 	if (player.teleportCooldown > 0.0f) return;
 
-	int maxPixels = 3 * actual_map->tile_width;
+	int maxPixels = 5 * actual_map->tile_width;
 
 	Vector2 dirVec(0.0f, 0.0f);
 	switch (player.dir) {
@@ -696,13 +694,13 @@ bool Game::checkAABBCollision(float x1, float y1, float w1, float h1, float x2, 
 		y1 < y2 + h2 && y1 + h1 > y2);
 }
 
-bool Game::checkEnemyCollision(float nextX, float nextY) {
+bool Game::checkEnemyCollision(const Enemy& e, float nextX, float nextY) {
 	if (!actual_map) return false;
 
-	float left = nextX;
-	float right = nextX + 63.0f;
-	float top = nextY;
-	float bottom = nextY + 63.0f;
+	float left = nextX + e.pOffsetX;
+	float right = nextX + e.pOffsetX + e.hitWidth - 1.0f;
+	float top = nextY + e.pOffsetY;
+	float bottom = nextY + e.pOffsetY + e.hitHeight - 1.0f;
 
 	if (actual_map->isWallAtPosition(left, top))     return true;
 	if (actual_map->isWallAtPosition(right, top))    return true;
@@ -714,10 +712,8 @@ bool Game::checkEnemyCollision(float nextX, float nextY) {
 
 void Game::updateEnemies(float seconds_elapsed) {
 	// Hitbox del jugador
-	float playerHitX = player.position.x + 4.0f;
-	float playerHitY = player.position.y + 10.0f;
-	float playerHitW = 8.0f;
-	float playerHitH = 6.0f;
+	float playerHitX = player.position.x + player.offsetX;
+	float playerHitY = player.position.y + player.offsetY;
 
 	for (auto& e : enemies) {
 		if (!e.active) continue;
@@ -726,25 +722,27 @@ void Game::updateEnemies(float seconds_elapsed) {
 		float nextX = e.position.x + (e.dirX * e.speed * seconds_elapsed);
 
 		// Si choca con una pared, se gira
-		if (checkEnemyCollision(nextX, e.position.y)) {
+		if (checkEnemyCollision(e, nextX, e.position.y)) {
 			e.dirX *= -1; // Invierte dirección
 		}
 		else {
 			e.position.x = nextX;
 		}
 
+		float enemyHitX = e.position.x + e.pOffsetX;
+		float enemyHitY = e.position.y + e.pOffsetY;
+
 		// Colisión con la hitbox del jugador
-		if (player.invincibilityTimer <= 0.0f) {
-			if (checkAABBCollision(playerHitX, playerHitY, playerHitW, playerHitH,
-				e.position.x, e.position.y, (float)e.width, (float)e.height)) {
+		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
+			if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight,enemyHitX, enemyHitY, e.hitWidth, e.hitHeight)) {
 				player.health -= 1;
-				player.invincibilityTimer = 2.0f; // 2 segundos de invencibilidad
+				player.invincibilityTimer = 2.0f;
 			}
 		}
 
 		e.animTimer += seconds_elapsed;
-		if (e.animTimer >= 0.15f) { // Cambia de frame cada 150ms
-			e.spriteFrame = (e.spriteFrame + 1) % 6; // Cambia '6' por la cantidad de frames que tenga tu sprite
+		if (e.animTimer >= 0.15f) {
+			e.spriteFrame = (e.spriteFrame + 1) % 6;
 			e.animTimer = 0.0f;
 		}
 	}
@@ -768,7 +766,35 @@ void Game::renderEnemies(Image& framebuffer) {
 		int srcX = e.spriteFrame * e.width;
 		int srcY = (e.dirX < 0) ? e.height*2 : e.height * 3; // Ejemplo: Fila 0 = derecha, Fila 1 (32px) = izquierda
 
+		int hitboxScreenX = (int)(e.position.x + e.bOffsetX);
+		int hitboxScreenY = (int)(e.position.y + e.bOffsetY);
+		framebuffer.drawRectangle(
+			hitboxScreenX,      // X de la hitbox en pantalla
+			hitboxScreenY,      // Y de la hitbox en pantalla
+			(int)e.impactWidth,    // Ancho ajustado de colisión (p.ej. 32)
+			(int)e.impactHeight,   // Alto ajustado de colisión (p.ej. 32)
+			Color(255, 0, 0)    // Color Rojo brillante para que destaque
+		);
+
 		Area area(srcX, srcY, e.width, e.height);
 		framebuffer.drawImage(enemyImage, (int)screenX, (int)screenY, area);
+	}
+}
+
+void Game::checkBulletEnemyCollisions() {
+	for (auto& b : player.playerBullets) {
+		if (!b.active) continue;
+		for (auto& e : enemies) {
+			if (!e.active) continue;
+			float enemyHitX = e.position.x + e.bOffsetX;
+			float enemyHitY = e.position.y + e.bOffsetY;
+			if (checkAABBCollision(b.x + b.offsetX, b.y + b.offsetY, b.bulletWidth, b.bulletHeight, e.position.x + e.bOffsetX, e.position.y + e.bOffsetY, e.impactWidth, e.impactHeight)) {
+				b.active = false;
+				if (--e.health <= 0) {
+					e.active = false;
+				}
+				break;
+			}
+		}
 	}
 }
