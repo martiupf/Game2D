@@ -163,7 +163,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	//synth.osc1.amplitude = 0.5;
 
 	Enemy e1;
-	e1.position = Vector2(30.0f, 30.0f);
+	e1.position = Vector2(30.0f, 0.0f);
 	enemies.push_back(e1);
 }
 
@@ -700,9 +700,9 @@ bool Game::checkEnemyCollision(float nextX, float nextY) {
 	if (!actual_map) return false;
 
 	float left = nextX;
-	float right = nextX + 31.0f;
+	float right = nextX + 63.0f;
 	float top = nextY;
-	float bottom = nextY + 31.0f;
+	float bottom = nextY + 63.0f;
 
 	if (actual_map->isWallAtPosition(left, top))     return true;
 	if (actual_map->isWallAtPosition(right, top))    return true;
