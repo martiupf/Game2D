@@ -18,6 +18,11 @@
 enum eCellType: uint16 {EMPTY, START, WALL, DOOR, CHEST};
 enum eItemType: uint16 {NOTHING, SWORD, POTION};
 
+enum eGameState {
+	START_SCREEN,
+	PLAYING
+};
+
 struct sCell {
 	eCellType type = EMPTY;
 	eItemType item = NOTHING;
@@ -114,6 +119,7 @@ class Game
 {
 public:
 	static Game* instance;
+	eGameState state = START_SCREEN;
 	GameMap* actual_map = nullptr;
 	//window
 	SDL_Window* window;

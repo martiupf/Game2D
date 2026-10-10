@@ -130,6 +130,7 @@ Image tileset;
 Color bgcolor(130, 80, 100);
 Image bulletImage;
 Image heartImage;
+Image titleImage;
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
 {
@@ -155,6 +156,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
 	bulletImage.load("data/pixil-frame-0.png");
 	heartImage.load("data/hearts.png");
+	titleImage.load("data/start_screen.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -244,6 +246,15 @@ void Game::renderBullets(Image& framebuffer) {
 void Game::render(void)
 {
 	Image framebuffer(160, 120);
+
+	if (state == START_SCREEN) {
+		Area fullArea(0, 0, 160, 120);
+		framebuffer.drawImage(titleImage, 0, 0, fullArea);
+
+		showFramebuffer(&framebuffer);
+		return;
+	}
+
 	framebuffer.fill(bgcolor);
 
 	if (!actual_map || actual_map->numLayers == 0) {
@@ -310,6 +321,10 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
+
+	if (state == START_SCREEN) {
+		return;
+	}
 
 	if (player.teleportCooldown > 0.0f) {
 		player.teleportCooldown -= (float)seconds_elapsed;
@@ -381,8 +396,10 @@ void Game::update(double seconds_elapsed)
 //Keyboard event handler (sync input)
 void Game::onKeyDown( SDL_KeyboardEvent event )
 {
-	switch(event.keysym.sym)
-	{
+	if (event.repeat != 0) return;
+	if (state == PLAYING) {
+		switch (event.keysym.sym)
+		{
 		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
 		case SDLK_z:
 			shootBullet();
@@ -390,6 +407,18 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		case SDLK_x:
 			teleport();
 			break;
+		case SDLK_c:
+			player.health -= 1;
+			break;
+		}
+	}
+	else if (state == START_SCREEN) {
+		switch (event.keysym.sym) {
+		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
+		case SDLK_RETURN:
+			state = PLAYING;
+			break;
+		}
 	}
 }
 
