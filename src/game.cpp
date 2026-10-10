@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-#define WALL_GID 909
+#define WALL_GID 910
 #define CHARACTER_SPRITE_GID 2241
 
 bool GameMap::isWallAtPosition(float worldX, float worldY) {
@@ -157,9 +157,14 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	bulletImage.load("data/pixil-frame-0.png");
 	heartImage.load("data/hearts.png");
 	titleImage.load("data/start_screen.png");
+	enemyImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_walk_without_shadow.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
+
+	Enemy e1;
+	e1.position = Vector2(30.0f, 30.0f);
+	enemies.push_back(e1);
 }
 
 void Game::shootBullet() {
@@ -296,24 +301,35 @@ void Game::render(void)
 			}
 		}
 	}
-	int playerScreenX = (int)player.position.x - (int)cameraPos.x;
-	int playerScreenY = (int)player.position.y - (int)cameraPos.y;
+	bool renderPlayer = true;
+	if (player.invincibilityTimer > 0.0f) {
+		// Alterna visibilidad cada frame convirtiendo el tiempo a ms o usando fmod
+		int flash = (int)(player.invincibilityTimer * 20.0f); // Cambia el '20' para parpadear más/menos rápido
+		if (flash % 2 == 0) {
+			renderPlayer = false;
+		}
+	}
+	if (renderPlayer) {
+		int playerScreenX = (int)player.position.x - (int)cameraPos.x;
+		int playerScreenY = (int)player.position.y - (int)cameraPos.y;
 
-	int spriteFrame = player.spriteFrame;
-	if (player.teleportCooldown > 0.0f) {
-		spriteFrame += 6;
+		int spriteFrame = player.spriteFrame;
+		if (player.teleportCooldown > 0.0f) {
+			spriteFrame += 6;
+		}
+
+		int tileX = spriteFrame * player.width;
+		int tileY = player.dir * player.height;
+
+		Area playerArea(tileX, tileY, player.width, player.height);
+		framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 	}
 
-	int tileX = spriteFrame * player.width; //Changes the animation sprite
-	int tileY = player.dir * player.height; //Choose the direction of the player
-	
-	Area playerArea(tileX, tileY, player.width, player.height);
-	framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
+	// --- RENDERIZAR ENEMIGOS ---
+	renderEnemies(framebuffer); // <-- AÑADIDO
 
 	renderBullets(framebuffer);
-
-	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180)); // Rojo
-
+	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180));
 	renderHearts(framebuffer);
 
 	showFramebuffer(&framebuffer);
@@ -326,6 +342,13 @@ void Game::update(double seconds_elapsed)
 		return;
 	}
 
+	if (player.invincibilityTimer > 0.0f) {
+		player.invincibilityTimer -= (float)seconds_elapsed;
+		if (player.invincibilityTimer < 0.0f) {
+			player.invincibilityTimer = 0.0f;
+		}
+	}
+
 	if (player.teleportCooldown > 0.0f) {
 		player.teleportCooldown -= (float)seconds_elapsed;
 		if (player.teleportCooldown < 0.0f) {
@@ -333,9 +356,22 @@ void Game::update(double seconds_elapsed)
 		}
 	}
 
-	float speed = 80.0f;
-
 	updateBullets(seconds_elapsed);
+	updateEnemies((float)seconds_elapsed);
+
+	if (player.isTeleporting) {
+		player.teleportElapsed += (float)seconds_elapsed;
+		float t = player.teleportElapsed / player.teleportDuration;
+
+		if (t >= 1.0f) {
+			player.position = player.teleportTargetPos;
+			player.isTeleporting = false;
+		}
+		else {
+			player.position.x = player.teleportStartPos.x + (player.teleportTargetPos.x - player.teleportStartPos.x) * t;
+			player.position.y = player.teleportStartPos.y + (player.teleportTargetPos.y - player.teleportStartPos.y) * t;
+		}
+	}
 
 	auto processKey = [&](bool isPressed, int dir) { //Adds and extracts directions to the stack
 		if (isPressed) {
@@ -367,20 +403,20 @@ void Game::update(double seconds_elapsed)
 
 		switch (activeDir) {
 		case 0: // Down
-			if (!checkPlayerCollision(player.position.x, player.position.y + speed * (float)seconds_elapsed))
-				player.position.y += speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x, player.position.y + player.speed * (float)seconds_elapsed))
+				player.position.y += player.speed * (float)seconds_elapsed;
 			break;
 		case 1: // Left
-			if(!checkPlayerCollision(player.position.x - speed * (float)seconds_elapsed, player.position.y))
-				player.position.x -= speed * (float)seconds_elapsed;
+			if(!checkPlayerCollision(player.position.x - player.speed * (float)seconds_elapsed, player.position.y))
+				player.position.x -= player.speed * (float)seconds_elapsed;
 			break;
 		case 2: // Right
-			if (!checkPlayerCollision(player.position.x + speed * (float)seconds_elapsed, player.position.y))
-				player.position.x += speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x + player.speed * (float)seconds_elapsed, player.position.y))
+				player.position.x += player.speed * (float)seconds_elapsed;
 			break;
 		case 3: // Up
-			if (!checkPlayerCollision(player.position.x, player.position.y - speed * (float)seconds_elapsed))
-				player.position.y -= speed * (float)seconds_elapsed;
+			if (!checkPlayerCollision(player.position.x, player.position.y - player.speed * (float)seconds_elapsed))
+				player.position.y -= player.speed * (float)seconds_elapsed;
 			break;
 		}
 	}
@@ -400,7 +436,7 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 	if (state == PLAYING) {
 		switch (event.keysym.sym)
 		{
-		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
+		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_z:
 			shootBullet();
 			break;
@@ -414,7 +450,7 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 	}
 	else if (state == START_SCREEN) {
 		switch (event.keysym.sym) {
-		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
+		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
 			state = PLAYING;
 			break;
@@ -589,7 +625,7 @@ bool Game::checkPlayerCollision(float nextX, float nextY)
 }
 
 void Game::teleport() {
-	if (!actual_map) return;
+	if (!actual_map || player.isTeleporting) return;
 
 	// Si está en cooldown, no permite usar el TP
 	if (player.teleportCooldown > 0.0f) return;
@@ -628,8 +664,11 @@ void Game::teleport() {
 		}
 
 		if (!checkPlayerCollision(candidatePos.x, candidatePos.y)) {
-			player.position = candidatePos;
-			player.teleportCooldown = 3.0f; // <-- Inicia los 5 segundos de cooldown
+			player.isTeleporting = true;
+			player.teleportStartPos = player.position;
+			player.teleportTargetPos = candidatePos;
+			player.teleportElapsed = 0.0f;
+			player.teleportCooldown = 3.0f;
 			break;
 		}
 	}
@@ -649,5 +688,87 @@ void Game::renderHearts(Image& framebuffer) {
 		framebuffer.drawImage(heartImage, screenX, 1, area);
 		screenX += 7;
 		hearts_drawn += 1;
+	}
+}
+
+bool Game::checkAABBCollision(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2) {
+	return (x1 < x2 + w2 && x1 + w1 > x2 &&
+		y1 < y2 + h2 && y1 + h1 > y2);
+}
+
+bool Game::checkEnemyCollision(float nextX, float nextY) {
+	if (!actual_map) return false;
+
+	float left = nextX;
+	float right = nextX + 31.0f;
+	float top = nextY;
+	float bottom = nextY + 31.0f;
+
+	if (actual_map->isWallAtPosition(left, top))     return true;
+	if (actual_map->isWallAtPosition(right, top))    return true;
+	if (actual_map->isWallAtPosition(left, bottom))  return true;
+	if (actual_map->isWallAtPosition(right, bottom)) return true;
+
+	return false;
+}
+
+void Game::updateEnemies(float seconds_elapsed) {
+	// Hitbox del jugador
+	float playerHitX = player.position.x + 4.0f;
+	float playerHitY = player.position.y + 10.0f;
+	float playerHitW = 8.0f;
+	float playerHitH = 6.0f;
+
+	for (auto& e : enemies) {
+		if (!e.active) continue;
+
+		// Movimiento horizontal
+		float nextX = e.position.x + (e.dirX * e.speed * seconds_elapsed);
+
+		// Si choca con una pared, se gira
+		if (checkEnemyCollision(nextX, e.position.y)) {
+			e.dirX *= -1; // Invierte dirección
+		}
+		else {
+			e.position.x = nextX;
+		}
+
+		// Colisión con la hitbox del jugador
+		if (player.invincibilityTimer <= 0.0f) {
+			if (checkAABBCollision(playerHitX, playerHitY, playerHitW, playerHitH,
+				e.position.x, e.position.y, (float)e.width, (float)e.height)) {
+				player.health -= 1;
+				player.invincibilityTimer = 2.0f; // 2 segundos de invencibilidad
+			}
+		}
+
+		e.animTimer += seconds_elapsed;
+		if (e.animTimer >= 0.15f) { // Cambia de frame cada 150ms
+			e.spriteFrame = (e.spriteFrame + 1) % 6; // Cambia '6' por la cantidad de frames que tenga tu sprite
+			e.animTimer = 0.0f;
+		}
+	}
+}
+
+void Game::renderEnemies(Image& framebuffer) {
+	for (const auto& e : enemies) {
+		if (!e.active) continue;
+
+		float screenX = e.position.x - cameraPos.x;
+		float screenY = e.position.y - cameraPos.y;
+
+		// Frustum culling básico
+		if (screenX < -e.width || screenX > framebuffer.width || screenY < -e.height || screenY > framebuffer.height) {
+			continue;
+		}
+
+		// DÓNDE CONFIGURAR EL SPRITE:
+		// Si tu hoja de sprites tiene varias direcciones/frames, ajusta srcX y srcY.
+		// Aquí tomamos un recorte directo de 32x32 desde la esquina superior izquierda (0,0):
+		int srcX = e.spriteFrame * e.width;
+		int srcY = (e.dirX < 0) ? e.height*2 : e.height * 3; // Ejemplo: Fila 0 = derecha, Fila 1 (32px) = izquierda
+
+		Area area(srcX, srcY, e.width, e.height);
+		framebuffer.drawImage(enemyImage, (int)screenX, (int)screenY, area);
 	}
 }

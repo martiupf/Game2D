@@ -49,6 +49,17 @@ struct Bullet {
 	bool active;
 };
 
+struct Enemy {
+	Vector2 position;
+	int width = 64;
+	int height = 64;
+	float speed = 100.0f;
+	int dirX = 1;
+	bool active = true;
+	int spriteFrame = 0;
+	float animTimer = 0.0f;
+};
+
 struct Player {
 	Vector2 position;
 	int width = PLAYERWIDTH;
@@ -57,7 +68,17 @@ struct Player {
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
 	float teleportCooldown = 0.0f;
+	float speed = 100.0f;
+
+	bool isTeleporting = false;
+	Vector2 teleportStartPos;
+	Vector2 teleportTargetPos;
+	float teleportDuration = 0.05f;
+	float teleportElapsed = 0.0f;
+
 	int health = 3;
+	float invincibilityTimer = 0.0f;
+
 	std::vector<int> inputStack; //Stack for directions (We don't want to make possible to move in diagonals)
 	std::vector<Bullet> playerBullets;
 };
@@ -118,6 +139,10 @@ public:
 class Game
 {
 public:
+
+	Image enemyImage;
+	std::vector<Enemy> enemies;
+
 	static Game* instance;
 	eGameState state = START_SCREEN;
 	GameMap* actual_map = nullptr;
@@ -170,6 +195,11 @@ public:
 	void renderBullets(Image& framebuffer);
 	bool checkPlayerCollision(float nextX, float nextY);
 	void renderHearts(Image& framebuffer);
+
+	void updateEnemies(float seconds_elapsed);
+	void renderEnemies(Image& framebuffer);
+	bool checkEnemyCollision(float nextX, float nextY);
+	bool checkAABBCollision(float x1, float y1, float w1, float h1, float x2, float y2, float w2, float h2);
 };
 
 
