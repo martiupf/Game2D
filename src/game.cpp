@@ -977,24 +977,11 @@ void Game::loadStage(int stageIndex) {
 	player.position = spawnPos;
 
 	// 5. Generar los enemigos/Boss específicos del nivel
-	if (currentStage == 0) {
-		Enemy boss;
-		boss.position = Vector2(30.0f, 0.0f);
-		boss.health = 10;
-		boss.isBoss = true; // <-- Marcado como Boss
-		enemies.push_back(boss);
-	}
-	else if (currentStage == 1) {
-		Enemy e1;
-		e1.position = Vector2(40.0f, 20.0f);
-		enemies.push_back(e1);
-
-		Enemy megaBoss;
-		megaBoss.position = Vector2(120.0f, 60.0f);
-		megaBoss.health = 25;
-		megaBoss.isBoss = true;
-		enemies.push_back(megaBoss);
-	}
+	Enemy boss;
+	boss.position = Vector2(30.0f, 0.0f);
+	boss.health = 10;
+	boss.isBoss = true; // <-- Marcado como Boss
+	enemies.push_back(boss);
 }
 
 void Game::loadNextStage() {

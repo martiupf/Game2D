@@ -215,7 +215,9 @@ public:
 
 	int currentStage = 0;
 	std::vector<std::string> stageFiles = {
-		"data/Mapa.json"
+		"data/Mapa1.json",
+		"data/Mapa2.json",
+		"data/Mapa3.json"
 	};
 	StageItem nextStageItem;
 
