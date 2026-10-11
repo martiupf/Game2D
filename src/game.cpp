@@ -157,9 +157,9 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	fireballImage.load("data/fireball_como_el_pitbull.png");
 	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
 	victoryImage.load("data/credits.png");
-	enableAudio(); //enable this line if you plan to add audio to your application
-	synth.playSample("data/coin.wav",1,true);
-	synth.osc1.amplitude = 0.5;
+	//enableAudio();
+	//synth.playSample("data/coin.wav",1,true);
+	//synth.osc1.amplitude = 0.5;
 }
 
 void Game::shootBullet() {
@@ -767,15 +767,8 @@ void Game::updateEnemies(float seconds_elapsed) {
 			if (e.hitTimer < 0.0f) e.hitTimer = 0.0f;
 		}
 
-		// Movimiento horizontal
-		float nextX = e.position.x + (e.dirX * e.speed * seconds_elapsed);
-
-		// Si choca con una pared, se gira
-		if (checkEnemyCollision(e, nextX, e.position.y)) {
-			e.dirX *= -1; // Invierte dirección
-		}
-		else {
-			e.position.x = nextX;
+		if (e.isBoss) {
+			updateBoss(e, seconds_elapsed);
 		}
 
 		float enemyHitX = e.position.x + e.pOffsetX;
@@ -898,26 +891,53 @@ bool Game::checkFireballWallCollision(const Fireball& fb) {
 }
 
 void Game::updateFireballs(float seconds_elapsed) {
-
 	for (auto& fb : fireballs) {
 		if (!fb.active) continue;
 
-		// 1. Mover la bola de fuego según dirección y velocidad
-		fb.position.x += fb.dir.x * fb.speed * seconds_elapsed;
-		fb.position.y += fb.dir.y * fb.speed * seconds_elapsed;
+		if (fb.isHoming) {
+			fb.lifetime -= seconds_elapsed;
+			if (fb.lifetime <= 0.0f) {
+				fb.active = false;
+				continue;
+			}
 
-		// 2. Colisión con paredes
+			// --- FÍSICA CON INERCIA (TOREAR) ---
+			Vector2 targetDir(player.position.x - fb.position.x, player.position.y - fb.position.y);
+			float len = std::sqrt(targetDir.x * targetDir.x + targetDir.y * targetDir.y);
+			if (len > 0.0f) {
+				targetDir.x /= len;
+				targetDir.y /= len;
+			}
+
+			Vector2 desiredVel(targetDir.x * fb.speed, targetDir.y * fb.speed);
+
+			// turnRate controla la inercia: valores más bajos (2.5 - 3.5) hacen que le cueste girar
+			float turnRate = 3.0f;
+			fb.velocity.x += (desiredVel.x - fb.velocity.x) * turnRate * seconds_elapsed;
+			fb.velocity.y += (desiredVel.y - fb.velocity.y) * turnRate * seconds_elapsed;
+
+			fb.position.x += fb.velocity.x * seconds_elapsed;
+			fb.position.y += fb.velocity.y * seconds_elapsed;
+		}
+		else {
+			// Movimiento rectilíneo normal
+			fb.position.x += fb.dir.x * fb.speed * seconds_elapsed;
+			fb.position.y += fb.dir.y * fb.speed * seconds_elapsed;
+		}
+
+		// Colisión con paredes
 		if (checkFireballWallCollision(fb)) {
 			fb.active = false;
 			continue;
 		}
 
-		// 3. Colisión con el jugador (si no es invulnerable ni está en teleport)
+		// Colisión con jugador
 		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
 			float fbHitX = fb.position.x + fb.hitOffsetX;
 			float fbHitY = fb.position.y + fb.hitOffsetY;
 
-			if (checkAABBCollision(player.position.x + player.offsetX, player.position.y + player.offsetY, player.hitWidth, player.hitWidth,
+			if (checkAABBCollision(player.position.x + player.offsetX, player.position.y + player.offsetY,
+				player.hitWidth, player.hitHeight,
 				fbHitX, fbHitY, (float)fb.hitWidth, (float)fb.hitHeight)) {
 				player.health -= 1;
 				player.invincibilityTimer = 2.0f;
@@ -926,11 +946,9 @@ void Game::updateFireballs(float seconds_elapsed) {
 		}
 	}
 
-	// 4. Eliminar del vector las bolas de fuego desactivadas
+	// Limpieza de inactivas...
 	fireballs.erase(
-		std::remove_if(fireballs.begin(), fireballs.end(), [](const Fireball& fb) {
-			return !fb.active;
-			}),
+		std::remove_if(fireballs.begin(), fireballs.end(), [](const Fireball& fb) { return !fb.active; }),
 		fireballs.end()
 	);
 }
@@ -989,6 +1007,7 @@ void Game::loadStage(int stageIndex) {
 	// 5. Generar los enemigos/Boss específicos del nivel
 	Enemy boss;
 	boss.position = Vector2(30.0f, 0.0f);
+	boss.spawnPos = boss.position;
 	boss.health = 10;
 	boss.isBoss = true; // <-- Marcado como Boss
 	enemies.push_back(boss);
@@ -1006,4 +1025,192 @@ void Game::renderStageItem(Image& framebuffer) {
 
 	Area area(0, 0, nextStageItem.width, nextStageItem.height);
 	framebuffer.drawImage(heartImage, screenX, screenY, area); // Cambia por tu imagen de portal/ítem
+}
+
+void Game::generateTripleShot(Vector2 origin, Vector2 targetPos) {
+	Vector2 dirToPlayer(targetPos.x - origin.x, targetPos.y - origin.y);
+	float baseAngle = std::atan2(dirToPlayer.y, dirToPlayer.x);
+
+	// 30 grados expresados en radianes (~0.5235 rad)
+	float spread = 30.0f * (3.14159265f / 180.0f);
+
+	float angles[3] = { baseAngle - spread, baseAngle, baseAngle + spread };
+
+	for (int i = 0; i < 3; ++i) {
+		generateFireball(origin.x, origin.y, std::cos(angles[i]), std::sin(angles[i]));
+	}
+}
+
+void Game::generateHomingBall(Vector2 origin) {
+	Fireball fb;
+	fb.position = origin;
+	fb.active = true;
+	fb.isHoming = true;
+	fb.speed = 50.0f; //max speed
+	fb.lifetime = 6.0f;
+
+	// Velocidad inicial hacia el jugador
+	Vector2 dir(player.position.x - origin.x, player.position.y - origin.y);
+	float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+	if (len > 0.0f) {
+		fb.velocity = Vector2((dir.x / len) * fb.speed, (dir.y / len) * fb.speed);
+	}
+	else {
+		fb.velocity = Vector2(0.0f, fb.speed);
+	}
+
+	fireballs.push_back(fb);
+}
+
+Vector2 Game::getTeleportPosFarFromPlayer(float minDistance, Enemy& e) {
+	if (!actual_map) return Vector2(0.0f, 0.0f);
+
+	float margin = actual_map->tile_width;
+	float mapW = (float)(actual_map->width * actual_map->tile_width);
+	float mapH = (float)(actual_map->height * actual_map->tile_height);
+
+	// Lista de las 4 esquinas del mapa
+	std::vector<Vector2> corners = {
+		Vector2(margin - e.bOffsetX, margin - e.bOffsetY),                               // Superior Izquierda
+		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, margin - e.bOffsetY),                // Superior Derecha
+		Vector2(margin - e.bOffsetX, mapH - margin - e.bOffsetY - e.impactHeight),                // Inferior Izquierda
+		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, mapH - margin - e.bOffsetY - e.impactHeight)  // Inferior Derecha
+	};
+
+	std::vector<Vector2> validCorners;
+	for (const auto& corner : corners) {
+		float dx = corner.x + e.width/2 - player.position.x - player.width/2;
+		float dy = corner.y + e.height/2 - player.position.y - player.height/2;
+		float dist = std::sqrt(dx * dx + dy * dy);
+
+		if (dist >= minDistance && corner != e.position) {
+			validCorners.push_back(corner);
+		}
+	}
+
+	// Si ninguna está bastante lejos, elige una esquina aleatoria
+	if (validCorners.empty()) {
+		return corners[rand() % corners.size()];
+	}
+	return validCorners[rand() % validCorners.size()];
+}
+
+void Game::updateBoss(Enemy& b, float seconds_elapsed) {
+	b.stateTimer += seconds_elapsed;
+
+	switch (b.state) {
+
+		// --- ESTADO REPOSO / ELECCIÓN DE ATAQUE ---
+	case BOSS_IDLE: {
+		// Movimiento flotante/caminar básico
+		float nextX = b.position.x + (b.dirX * b.speed * seconds_elapsed);
+		if (checkEnemyCollision(b, nextX, b.position.y)) b.dirX *= -1;
+		else b.position.x = nextX;
+
+		// COOLDOWN NORMAL ENTRE ATAQUES
+		b.cooldownTimer -= seconds_elapsed;
+		if (b.cooldownTimer <= 0.0f) {
+			b.cooldownTimer = 5.0f;
+			int roll = rand() % 3;
+			if (roll == 0) {
+				b.state = BOSS_TRIPLE_SHOT; // Disparo Áspid
+			}
+			else if (roll == 1) {
+				b.state = BOSS_TELEGRAPH_TELEPORT; // 4 Teleports
+				b.teleportCount = 0;
+			}
+			else {
+				b.state = BOSS_HOMING; // Bola teledirigida
+			}
+			b.stateTimer = 0.0f;
+			break;
+		}
+
+		// REGLA DE PUNIGO: Si el jugador se pone a su misma altura en Y (+/- 16px)
+		float diffY = std::abs((player.position.y + player.height / 2) - (b.position.y + b.height / 2));
+		if (diffY < 16.0f) {
+			// Carga embestida de inmediato para sacarlo de su altura
+			b.state = BOSS_TELEGRAPH_DASH;
+			b.stateTimer = 0.0f;
+			float dirX = (player.position.x > b.position.x) ? 1.0f : -1.0f;
+			b.targetDashDir = Vector2(dirX, 0.0f);
+		}
+		break;
+	}
+
+	case BOSS_TRIPLE_SHOT: {
+		Vector2 center(b.position.x + b.width / 2, b.position.y + b.height / 2);
+		generateTripleShot(center, Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2));
+
+		b.state = BOSS_IDLE;
+		b.stateTimer = 0.0f;
+		break;
+	}
+						 // --- ATAQUE 2: EMBESTIDA POR ALINEACIÓN EN Y ---
+	case BOSS_TELEGRAPH_DASH: {
+		b.cooldownTimer -= seconds_elapsed;
+		if (b.stateTimer >= 1.0f) {
+			b.state = BOSS_DASH;
+			b.stateTimer = 0.0f;
+		}
+		break;
+	}
+	case BOSS_DASH: {
+		b.cooldownTimer -= seconds_elapsed;
+		float dashSpeed = 300.0f;
+		float moveX = b.targetDashDir.x * dashSpeed * seconds_elapsed;
+
+		if (!checkEnemyCollision(b, b.position.x + moveX, b.position.y)) {
+			b.position.x += moveX;
+		}
+
+		if (b.stateTimer >= 0.35f) { // Duración del dash
+			b.state = BOSS_IDLE;
+			b.stateTimer = 0.0f;
+		}
+		break;
+	}
+
+				  // --- ATAQUE 3: 4 TELEPORTS RÁPIDOS Y DISPARO TRIPLE ---
+	case BOSS_TELEGRAPH_TELEPORT: {
+		if (b.stateTimer >= 0.3f) {
+			b.maxTeleports = 3 + (rand() % 4); //random between 3 and 7
+			b.state = BOSS_TELEPORT;
+			b.teleportTimer = 0.0f;
+		}
+		break;
+	}
+	case BOSS_TELEPORT: {
+		b.teleportTimer += seconds_elapsed;
+
+		if (b.teleportTimer >= 1.0f) { // Realiza un teleport cada 0.4s
+			b.teleportTimer = 0.0f;
+
+			// 1. Teleport a esquina lejana (mínimo 70px de distancia del jugador)
+			b.position = getTeleportPosFarFromPlayer(50.0f, b);
+
+			// 2. Dispara el triple abanico desde la nueva posición
+			Vector2 center(b.position.x + b.width / 2, b.position.y + b.height / 2);
+			generateTripleShot(center, Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2));
+
+			b.teleportCount++;
+
+			// Tras 4 teleports, termina el ataque
+			if (b.teleportCount >= b.maxTeleports) {
+				b.position = b.spawnPos;
+				b.state = BOSS_IDLE;
+				b.stateTimer = 0.0f;
+			}
+		}
+		break;
+	}
+	case BOSS_HOMING: {
+		Vector2 center(b.position.x + b.width / 2, b.position.y + b.height / 2);
+		generateHomingBall(center);
+
+		b.state = BOSS_IDLE;
+		b.stateTimer = 0.0f;
+		break;
+	}
+	}
 }

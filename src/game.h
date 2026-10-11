@@ -24,6 +24,21 @@ enum eGameState {
 	VICTORY
 };
 
+enum eBossState {
+	BOSS_IDLE,
+	BOSS_TRIPLE_SHOT,
+	BOSS_TELEGRAPH_DASH,
+	BOSS_DASH,
+	BOSS_TELEGRAPH_TELEPORT,
+	BOSS_TELEPORT,
+	BOSS_HOMING
+};
+
+enum eBossPhase {
+	BOSS_PHASE_1,
+	BOSS_PHASE_2
+};
+
 struct sCell {
 	eCellType type = EMPTY;
 	eItemType item = NOTHING;
@@ -63,6 +78,7 @@ struct StageItem {
 
 struct Enemy {
 	Vector2 position;
+	Vector2 spawnPos;
 	int width = 64;
 	int height = 64;
 	float speed = 100.0f;
@@ -84,6 +100,16 @@ struct Enemy {
 	float impactHeight = 33.0f;
 	float hitTimer = 0.0f;
 	float maxTimer = 0.25f;
+
+	eBossPhase phase = BOSS_PHASE_1;
+	eBossState state = BOSS_IDLE;
+	float stateTimer = 0.0f;
+	float cooldownTimer = 1.5f;
+
+	Vector2 targetDashDir;
+	int teleportCount = 0;
+	int maxTeleports;
+	float teleportTimer = 0.0f;
 };
 
 struct Player {
@@ -118,6 +144,10 @@ struct Player {
 struct Fireball {
 	Vector2 position;
 	Vector2 dir;
+	Vector2 velocity = Vector2(0.0f, 0.0f);
+	bool isHoming = false;
+	float lifetime = 6.0f;
+
 	int width = 4;
 	int height = 4;
 	int hitOffsetX = 2;
@@ -267,6 +297,11 @@ public:
 	void updateFireballs(float seconds_elapsed);
 	bool checkFireballWallCollision(const Fireball& fb);
 	void renderFireballs(Image& framebuffer);
+
+	void generateTripleShot(Vector2 origin, Vector2 targetPos);
+	void generateHomingBall(Vector2 origin);
+	Vector2 getTeleportPosFarFromPlayer(float minDistance, Enemy& e);
+	void updateBoss(Enemy& b, float seconds_elapsed);
 };
 
 
