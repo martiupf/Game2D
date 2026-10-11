@@ -20,7 +20,8 @@ enum eItemType: uint16 {NOTHING, SWORD, POTION};
 
 enum eGameState {
 	START_SCREEN,
-	PLAYING
+	PLAYING,
+	VICTORY
 };
 
 struct sCell {
@@ -53,6 +54,13 @@ struct Bullet {
 	int offsetY;
 };
 
+struct StageItem {
+	Vector2 position;
+	int width = 16;
+	int height = 16;
+	bool active = false;
+};
+
 struct Enemy {
 	Vector2 position;
 	int width = 64;
@@ -63,6 +71,7 @@ struct Enemy {
 	int spriteFrame = 0;
 	float animTimer = 0.0f;
 	int health = 5;
+	bool isBoss = false;
 
 	float pOffsetX = 24.0f;
 	float pOffsetY = 15.0f;
@@ -73,6 +82,8 @@ struct Enemy {
 	float bOffsetY = 11.0f;
 	float impactWidth = 24.0f;
 	float impactHeight = 33.0f;
+	float hitTimer = 0.0f;
+	float maxTimer = 0.25f;
 };
 
 struct Player {
@@ -173,11 +184,12 @@ public:
 class Game
 {
 public:
-
+	Image victoryImage;
 	Image enemyImage;
 	std::vector<Enemy> enemies;
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
+	Image hurtImage;
 
 	static Game* instance;
 	eGameState state = START_SCREEN;
@@ -200,6 +212,16 @@ public:
 
 	//audio
 	Synth synth;
+
+	int currentStage = 0;
+	std::vector<std::string> stageFiles = {
+		"data/Mapa.json"
+	};
+	StageItem nextStageItem;
+
+	void loadStage(int stageIndex);
+	void loadNextStage();
+	void renderStageItem(Image& framebuffer);
 
 	//ctor
 	Game( int window_width, int window_height, SDL_Window* window );

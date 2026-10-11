@@ -155,13 +155,11 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	titleImage.load("data/start_screen.png");
 	enemyImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_walk_without_shadow.png");
 	fireballImage.load("data/fireball_como_el_pitbull.png");
+	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
+	victoryImage.load("data/credits.png");
 	//enableAudio(); //enable this line if you plan to add audio to your application
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
-
-	Enemy e1;
-	e1.position = Vector2(30.0f, 0.0f);
-	enemies.push_back(e1);
 }
 
 void Game::shootBullet() {
@@ -257,6 +255,13 @@ void Game::render(void)
 		return;
 	}
 
+	if (state == VICTORY) {
+		Area fullArea(0, 0, 160, 120);
+		framebuffer.drawImage(victoryImage, 0, 0, fullArea);
+		showFramebuffer(&framebuffer);
+		return;
+	}
+
 	framebuffer.fill(bgcolor);
 
 	if (!actual_map || actual_map->numLayers == 0) {
@@ -324,9 +329,9 @@ void Game::render(void)
 
 	// --- RENDERIZAR ENEMIGOS ---
 	renderFireballs(framebuffer);
-	renderEnemies(framebuffer); // <-- AÑADIDO
-
 	renderBullets(framebuffer);
+	renderEnemies(framebuffer); // <-- AÑADIDO
+	renderStageItem(framebuffer);
 	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180));
 	renderHearts(framebuffer);
 
@@ -428,6 +433,19 @@ void Game::update(double seconds_elapsed)
 			player.animTimer = 0.0f;
 		}
 	}
+
+	if (nextStageItem.active) {
+		float playerHitX = player.position.x + player.offsetX;
+		float playerHitY = player.position.y + player.offsetY;
+
+		if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight,
+			nextStageItem.position.x, nextStageItem.position.y,
+			nextStageItem.width, nextStageItem.height)) {
+
+			nextStageItem.active = false;
+			loadNextStage(); // <-- Cambia automáticamente al siguiente mapa
+		}
+	}
 }
 
 //Keyboard event handler (sync input)
@@ -449,10 +467,20 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 			break;
 		}
 	}
+	else if (state == VICTORY) {
+		switch (event.keysym.sym) {
+		case SDLK_ESCAPE: must_exit = true; break;
+		case SDLK_RETURN:
+			state = START_SCREEN; // Regresa al menú principal
+			break;
+		}
+	}
 	else if (state == START_SCREEN) {
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
+			player.health = 3;
+			loadStage(0);
 			state = PLAYING;
 			break;
 		}
@@ -724,6 +752,10 @@ void Game::updateEnemies(float seconds_elapsed) {
 
 	for (auto& e : enemies) {
 		if (!e.active) continue;
+		if (e.hitTimer > 0.0f) {
+			e.hitTimer -= seconds_elapsed;
+			if (e.hitTimer < 0.0f) e.hitTimer = 0.0f;
+		}
 
 		// Movimiento horizontal
 		float nextX = e.position.x + (e.dirX * e.speed * seconds_elapsed);
@@ -770,25 +802,32 @@ void Game::renderEnemies(Image& framebuffer) {
 		if (screenX < -e.width || screenX > framebuffer.width || screenY < -e.height || screenY > framebuffer.height) {
 			continue;
 		}
+		
+		if (e.hitTimer > 0.0f) {
+			float progress = (e.maxTimer - e.hitTimer) / e.maxTimer;
 
-		// DÓNDE CONFIGURAR EL SPRITE:
-		// Si tu hoja de sprites tiene varias direcciones/frames, ajusta srcX y srcY.
-		// Aquí tomamos un recorte directo de 32x32 desde la esquina superior izquierda (0,0):
-		int srcX = e.spriteFrame * e.width;
-		int srcY = (e.dirX < 0) ? e.height*2 : e.height * 3; // Ejemplo: Fila 0 = derecha, Fila 1 (32px) = izquierda
+			// 2. Definir el salto de frame y los frames restantes
+			int startFrame = 1; // Nos saltamos el frame 0 y empezamos en el 1
+			int totalFrames = 5; // Nos quedan 5 frames por mostrar (1, 2, 3, 4, 5)
 
-		int hitboxScreenX = (int)(e.position.x + e.bOffsetX);
-		int hitboxScreenY = (int)(e.position.y + e.bOffsetY);
-		framebuffer.drawRectangle(
-			hitboxScreenX,      // X de la hitbox en pantalla
-			hitboxScreenY,      // Y de la hitbox en pantalla
-			(int)e.impactWidth,    // Ancho ajustado de colisión (p.ej. 32)
-			(int)e.impactHeight,   // Alto ajustado de colisión (p.ej. 32)
-			Color(255, 0, 0)    // Color Rojo brillante para que destaque
-		);
+			int frameIndex = startFrame + (int)(progress * totalFrames);
 
-		Area area(srcX, srcY, e.width, e.height);
-		framebuffer.drawImage(enemyImage, (int)screenX, (int)screenY, area);
+			// Evitar que se pase del último frame (índice 5) por precisión flotante
+			if (frameIndex > 5) {
+				frameIndex = 5;
+			}
+
+			int srcX = frameIndex * e.width;
+			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3; // S'ha de canviar
+			Area area(srcX, srcY, e.width, e.height);
+			framebuffer.drawImage(hurtImage, (int)screenX, (int)screenY, area);
+		}
+		else {
+			int srcX = e.spriteFrame * e.width;
+			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3; // S'ha de canviar
+			Area area(srcX, srcY, e.width, e.height);
+			framebuffer.drawImage(enemyImage, (int)screenX, (int)screenY, area);
+		}
 	}
 }
 
@@ -801,8 +840,13 @@ void Game::checkBulletEnemyCollisions() {
 			float enemyHitY = e.position.y + e.bOffsetY;
 			if (checkAABBCollision(b.x + b.offsetX, b.y + b.offsetY, b.bulletWidth, b.bulletHeight, e.position.x + e.bOffsetX, e.position.y + e.bOffsetY, e.impactWidth, e.impactHeight)) {
 				b.active = false;
+				e.hitTimer = e.maxTimer;
 				if (--e.health <= 0) {
 					e.active = false;
+					if (e.isBoss) {
+						nextStageItem.position = e.position + Vector2(e.width/2, e.height/2);
+						nextStageItem.active = true;
+					}
 				}
 				break;
 			}
@@ -898,4 +942,71 @@ void Game::renderFireballs(Image& framebuffer) {
 		Area area(0, 0, fb.width, fb.height);
 		framebuffer.drawImage(fireballImage, screenX, screenY, area);
 	}
+}
+
+void Game::loadStage(int stageIndex) {
+	if (stageIndex < 0 || stageIndex >= (int)stageFiles.size()) {
+		std::cout << "¡Has completado todos los niveles!" << std::endl;
+		state = VICTORY; // O un estado de Victoria/Créditos
+		return;
+	}
+
+	currentStage = stageIndex;
+
+	// 1. Liberar el mapa anterior de la memoria
+	if (actual_map != nullptr) {
+		// Asumiendo que tu struct sLayer tiene arrays creados con new
+		for (int l = 0; l < actual_map->numLayers; ++l) {
+			delete[] actual_map->layers[l].data;
+		}
+		delete[] actual_map->layers;
+		delete actual_map;
+		actual_map = nullptr;
+	}
+
+	// 2. Cargar el nuevo mapa
+	actual_map = loadGameMap(stageFiles[currentStage].c_str());
+
+	// 3. Resetear entidades de la partida
+	player.playerBullets.clear();
+	fireballs.clear();
+	enemies.clear();
+	nextStageItem.active = false;
+
+	// 4. Reposicionar al jugador en el punto de spawn del nuevo mapa
+	player.position = spawnPos;
+
+	// 5. Generar los enemigos/Boss específicos del nivel
+	if (currentStage == 0) {
+		Enemy boss;
+		boss.position = Vector2(30.0f, 0.0f);
+		boss.health = 10;
+		boss.isBoss = true; // <-- Marcado como Boss
+		enemies.push_back(boss);
+	}
+	else if (currentStage == 1) {
+		Enemy e1;
+		e1.position = Vector2(40.0f, 20.0f);
+		enemies.push_back(e1);
+
+		Enemy megaBoss;
+		megaBoss.position = Vector2(120.0f, 60.0f);
+		megaBoss.health = 25;
+		megaBoss.isBoss = true;
+		enemies.push_back(megaBoss);
+	}
+}
+
+void Game::loadNextStage() {
+	loadStage(currentStage + 1);
+}
+
+void Game::renderStageItem(Image& framebuffer) {
+	if (!nextStageItem.active) return;
+
+	int screenX = (int)(nextStageItem.position.x);
+	int screenY = (int)(nextStageItem.position.y);
+
+	Area area(0, 0, nextStageItem.width, nextStageItem.height);
+	framebuffer.drawImage(heartImage, screenX, screenY, area); // Cambia por tu imagen de portal/ítem
 }
