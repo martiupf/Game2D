@@ -101,6 +101,7 @@ struct Player {
 	Vector2 teleportTargetPos;
 	float teleportDuration = 0.05f;
 	float teleportElapsed = 0.0f;
+	float shootCooldown = 0.0f;
 
 	int health = 3;
 	float invincibilityTimer = 0.0f;
@@ -269,4 +270,4 @@ public:
 };
 
 
-#endif 
+#endif

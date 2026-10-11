@@ -157,12 +157,13 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	fireballImage.load("data/fireball_como_el_pitbull.png");
 	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
 	victoryImage.load("data/credits.png");
-	//enableAudio(); //enable this line if you plan to add audio to your application
-	//synth.playSample("data/coin.wav",1,true);
-	//synth.osc1.amplitude = 0.5;
+	enableAudio(); //enable this line if you plan to add audio to your application
+	synth.playSample("data/coin.wav",1,true);
+	synth.osc1.amplitude = 0.5;
 }
 
 void Game::shootBullet() {
+	if (player.shootCooldown > 0.0f) return;
 	Bullet newBullet;
 
 	float bulletWidth = 10.0f;
@@ -191,6 +192,8 @@ void Game::shootBullet() {
 	newBullet.y = (player.position.y + offsetY + (height / 2.0f) - (bulletHeight / 2.0f)) + (newBullet.dirY * spawnOffset);
 
 	player.playerBullets.push_back(newBullet);
+
+	player.shootCooldown = 0.5f;
 }
 
 void Game::updateBullets(float seconds_elapsed) {
@@ -343,6 +346,13 @@ void Game::update(double seconds_elapsed)
 
 	if (state == START_SCREEN) {
 		return;
+	}
+
+	if (player.shootCooldown > 0.0f) {
+		player.shootCooldown -= (float)seconds_elapsed;
+		if (player.shootCooldown < 0.0f) {
+			player.shootCooldown = 0.0f;
+		}
 	}
 
 	if (player.invincibilityTimer > 0.0f) {
