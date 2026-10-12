@@ -8,7 +8,10 @@
 #include <cmath>
 
 #define WALL_GID 910
-#define CHARACTER_SPRITE_GID 2241
+#define MID_WALL_GID 1242
+#define BLACK_TILE_GID 1245
+#define ALT_WALL_1_GID 935
+#define ALT_WALL_2_GID 939
 
 bool GameMap::isXAtPosition(float worldX, float worldY, eCellType type) { //This function checks if the cell's type with coordinates (worldX, worldY) is the "type" variable
 	int tileX = (int)worldX / this->tile_width;
@@ -34,11 +37,15 @@ bool Game::bulletIsActive(Bullet b) { //Checks collisions with walls
 		offsetX = 3; offsetY = 0;
 		width = 4; height = 10;
 	}
-	else return false; //We check every corner of the bullet
+	else return false; //We check every corner of the bullet. This can be optimized, I know
 	if (this->actual_map->isXAtPosition(b.x+offsetX, b.y+offsetY, WALL)) return false;
 	if (this->actual_map->isXAtPosition(b.x+offsetX+width-1, b.y + offsetY, WALL)) return false;
 	if (this->actual_map->isXAtPosition(b.x + offsetX, b.y + offsetY + height-1, WALL)) return false;
 	if (this->actual_map->isXAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1, WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX, b.y + offsetY, MID_WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX + width - 1, b.y + offsetY, MID_WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX, b.y + offsetY + height - 1, MID_WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX + width - 1, b.y + offsetY + height - 1, MID_WALL)) return false;
 	return true;
 }
 
@@ -109,6 +116,10 @@ GameMap* loadGameMap(const char* filename) {
 					if (layerName == "Funcional" || layerName == "funcional") { //We transform the GID to a type
 						if (rawGid == 0) cell.type = EMPTY;
 						else if (rawGid == WALL_GID) cell.type = WALL;
+						else if (rawGid == MID_WALL_GID) cell.type = MID_WALL;
+						else if (rawGid == BLACK_TILE_GID) cell.type = BLACKTILE;
+						else if (rawGid == ALT_WALL_1_GID) cell.type = ALT_WALL_1;
+						else if (rawGid == ALT_WALL_2_GID) cell.type = ALT_WALL_2;
 					}
 				}
 			}
@@ -152,6 +163,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	fireballImage.load("data/fireball_como_el_pitbull.png");
 	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
 	victoryImage.load("data/credits.png");
+	nextStageItemImage.load("data/nextStageItem.png");
 	//enableAudio();
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -258,6 +270,12 @@ void Game::render(void)
 		showFramebuffer(&framebuffer);
 		return;
 	}
+	if (state == DEAD_SCREEN) {
+		Area fullArea(0, 0, 160, 120);
+		framebuffer.drawImage(victoryImage, 0, 0, fullArea);
+		showFramebuffer(&framebuffer);
+		return;
+	}
 
 	framebuffer.fill(bgcolor);
 
@@ -338,6 +356,9 @@ void Game::update(double seconds_elapsed)
 		return;
 	}
 
+	if (player.health <= 0 && state == PLAYING) {
+		state = DEAD_SCREEN;
+	}
 	if (player.shootCooldown > 0.0f) {
 		player.shootCooldown -= (float)seconds_elapsed;
 		if (player.shootCooldown < 0.0f) {
@@ -451,7 +472,29 @@ void Game::update(double seconds_elapsed)
 //Keyboard event handler (sync input)
 void Game::onKeyDown( SDL_KeyboardEvent event )
 {
+
 	if (event.repeat != 0) return;
+	if (debugMode) {
+		switch (event.keysym.sym) {
+		case SDLK_1:
+			loadStage(0);
+			state == PLAYING;
+			break;
+		case SDLK_2:
+			loadStage(1);
+			state == PLAYING;
+			break;
+		case SDLK_3:
+			loadStage(2);
+			state == PLAYING;
+			break;
+		}
+	}
+
+	if (event.keysym.sym == SDLK_d) {
+		debugMode = !debugMode;
+	}
+
 	if (state == PLAYING) {
 		switch (event.keysym.sym)
 		{
@@ -461,9 +504,6 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 			break;
 		case SDLK_x:
 			teleport();
-			break;
-		case SDLK_c:
-			player.health -= 1;
 			break;
 		}
 	}
@@ -479,10 +519,16 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
-			player.health = 3;
 			loadStage(0);
 			state = PLAYING;
 			break;
+		}
+	}
+	else if (state == DEAD_SCREEN) {
+		switch (event.keysym.sym) {
+		case SDLK_ESCAPE: must_exit = true; break;
+		case SDLK_RETURN: 
+			state = START_SCREEN; break;
 		}
 	}
 }
@@ -650,6 +696,14 @@ bool Game::checkPlayerCollision(float nextX, float nextY)
 	if (actual_map->isXAtPosition(right, top, WALL))    return true;
 	if (actual_map->isXAtPosition(left, bottom, WALL))  return true;
 	if (actual_map->isXAtPosition(right, bottom, WALL)) return true;
+	if (actual_map->isXAtPosition(left, top, MID_WALL))     return true;
+	if (actual_map->isXAtPosition(right, top, MID_WALL))    return true;
+	if (actual_map->isXAtPosition(left, bottom, MID_WALL))  return true;
+	if (actual_map->isXAtPosition(right, bottom, MID_WALL)) return true;
+	if (actual_map->isXAtPosition(left, top, BLACKTILE))     return true;
+	if (actual_map->isXAtPosition(right, top, BLACKTILE))    return true;
+	if (actual_map->isXAtPosition(left, bottom, BLACKTILE))  return true;
+	if (actual_map->isXAtPosition(right, bottom, BLACKTILE)) return true;
 
 	return false;
 }
@@ -837,15 +891,28 @@ void Game::checkBulletEnemyCollisions() {
 		if (!b.active) continue;
 		for (auto& e : enemies) {
 			if (!e.active) continue;
-			float enemyHitX = e.position.x + e.bOffsetX;
-			float enemyHitY = e.position.y + e.bOffsetY;
-			if (checkAABBCollision(b.x + b.offsetX, b.y + b.offsetY, b.bulletWidth, b.bulletHeight, e.position.x + e.bOffsetX, e.position.y + e.bOffsetY, e.impactWidth, e.impactHeight)) {
+
+			if (checkAABBCollision(b.x + b.offsetX, b.y + b.offsetY, b.bulletWidth, b.bulletHeight,
+				e.position.x + e.bOffsetX, e.position.y + e.bOffsetY, e.impactWidth, e.impactHeight)) {
 				b.active = false;
 				e.hitTimer = e.maxTimer;
-				if (--e.health <= 0) { //This kills the enemy
+				if (--e.health <= 0) { // This kills the enemy
 					e.active = false;
 					if (e.isBoss) {
-						nextStageItem.position = e.position + Vector2(e.width/2, spawnPos.y); //We spawn the item at the same height as the spawn pos. Some maps are made as you cannot enter the enemy area to take the item
+						float mapWidthPixels = actual_map->width * actual_map->tile_width;
+
+						Vector2 pos1 = spawnPos;
+						Vector2 pos2 = Vector2(mapWidthPixels - spawnPos.x - nextStageItem.width, spawnPos.y);
+
+						float dx1 = pos1.x - player.position.x;
+						float dy1 = pos1.y - player.position.y;
+						float distSq1 = dx1 * dx1 + dy1 * dy1;
+
+						float dx2 = pos2.x - player.position.x;
+						float dy2 = pos2.y - player.position.y;
+						float distSq2 = dx2 * dx2 + dy2 * dy2;
+
+						nextStageItem.position = (distSq1 > distSq2) ? pos1 : pos2;
 						nextStageItem.active = true;
 					}
 				}
@@ -962,10 +1029,12 @@ void Game::renderFireballs(Image& framebuffer) {
 }
 
 void Game::loadStage(int stageIndex) {
+	
 	if (stageIndex < 0 || stageIndex >= (int)stageFiles.size()) {
 		state = VICTORY;
 		return;
 	}
+	player.health = 3;
 
 	currentStage = stageIndex;
 
@@ -993,7 +1062,7 @@ void Game::loadStage(int stageIndex) {
 	Enemy boss;
 	boss.position = Vector2(30.0f, 0.0f);
 	boss.spawnPos = boss.position;
-	boss.health = 10;
+	boss.health = 20;
 	boss.isBoss = true;
 	enemies.push_back(boss);
 }
@@ -1009,7 +1078,7 @@ void Game::renderStageItem(Image& framebuffer) {
 	int screenY = (int)(nextStageItem.position.y);
 
 	Area area(0, 0, nextStageItem.width, nextStageItem.height);
-	framebuffer.drawImage(heartImage, screenX, screenY, area);
+	framebuffer.drawImage(nextStageItemImage, screenX, screenY, area);
 }
 
 void Game::generateTripleShot(Vector2 origin, Vector2 targetPos) {

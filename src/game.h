@@ -15,12 +15,14 @@
 #include "utils.h"
 #include "synth.h"
 
-enum eCellType: uint16 {EMPTY, WALL, MID_WALL, BLACKTILE, ALT_WALL};
+enum eCellType: uint16 {EMPTY, WALL, MID_WALL, BLACKTILE, ALT_WALL_1, ALT_WALL_2};
 
 enum eGameState {
 	START_SCREEN,
 	PLAYING,
-	VICTORY
+	VICTORY,
+	DEAD_SCREEN,
+	TUTORIAL_SCREEN
 };
 
 enum eBossState { //Diferent states to change enemy behaviours
@@ -54,6 +56,11 @@ struct sTileset {
 struct sObject {
 	eCellType type;
 	Vector2 position;
+};
+
+struct altWall {
+	Vector2 position;
+	bool active;
 };
 
 struct Bullet {
@@ -223,10 +230,12 @@ public:
 	Image minifont;
 	Image sprite;
 	Image tileset;
+	Image nextStageItemImage;
 	std::vector<Enemy> enemies;
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
 	Image hurtImage;
+	std::vector<altWall> altWalls;
 
 	static Game* instance;
 	eGameState state = START_SCREEN;
@@ -238,6 +247,7 @@ public:
 	int window_height;
 	Player player;
 	Vector2 spawnPos;
+	bool debugMode = false;
 
 	//some globals
 	long frame;
