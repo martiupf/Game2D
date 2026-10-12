@@ -114,12 +114,30 @@ GameMap* loadGameMap(const char* filename) {
 					cell.tileId = rawGid;
 
 					if (layerName == "Funcional" || layerName == "funcional") { //We transform the GID to a type
-						if (rawGid == 0) cell.type = EMPTY;
+						if (rawGid == 0 && !cell.type) cell.type = EMPTY;
 						else if (rawGid == WALL_GID) cell.type = WALL;
 						else if (rawGid == MID_WALL_GID) cell.type = MID_WALL;
 						else if (rawGid == BLACK_TILE_GID) cell.type = BLACKTILE;
-						else if (rawGid == ALT_WALL_1_GID) cell.type = ALT_WALL_1;
-						else if (rawGid == ALT_WALL_2_GID) cell.type = ALT_WALL_2;
+						else if (rawGid == ALT_WALL_1_GID) {
+							cell.type = MID_WALL;
+							map->getCell(x+1, y, l).type = MID_WALL;
+							map->getCell(x, y + 1, l).type = MID_WALL;
+							map->getCell(x + 1, y + 1, l).type = MID_WALL;
+							altWall aw;
+							aw.position = Vector2(x, y);
+							aw.active = true;
+							map->altWalls.push_back(aw);
+						}
+						else if (rawGid == ALT_WALL_2_GID) {
+							cell.type = BLACKTILE;
+							map->getCell(x + 1, y, l).type = BLACKTILE;
+							map->getCell(x, y + 1, l).type = BLACKTILE;
+							map->getCell(x + 1, y + 1, l).type = BLACKTILE;
+							altWall aw;
+							aw.position = Vector2(x, y);
+							aw.active = false;
+							map->altWalls.push_back(aw);
+						}
 					}
 				}
 			}
@@ -250,7 +268,6 @@ void Game::renderBullets(Image& framebuffer) {
 }
 
 
-
 //what to do when the image has to be draw
 void Game::render(void)
 {
@@ -290,12 +307,13 @@ void Game::render(void)
 		if (!layer.visible)
 			continue;
 
+		int functionalLayerIdx = actual_map->getLayerIndex("Funcional");
 		for (int y = 0; y < actual_map->height; ++y) {
 			for (int x = 0; x < actual_map->width; ++x) {
 				sCell& cell = actual_map->getCell(x, y, l);
 				int gid = cell.tileId;
 
-				if (gid <= 0) continue;
+				if (gid == 0) continue;
 
 				sTileset* ts = actual_map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
@@ -318,6 +336,7 @@ void Game::render(void)
 			}
 		}
 	}
+	renderAltWalls(framebuffer);
 	bool renderPlayer = true;
 	if (player.invincibilityTimer > 0.0f) {
 		// Flashes the renerization of the player to create an invincibility effect when it is hurt
@@ -377,6 +396,14 @@ void Game::update(double seconds_elapsed)
 		player.teleportCooldown -= (float)seconds_elapsed;
 		if (player.teleportCooldown < 0.0f) {
 			player.teleportCooldown = 0.0f;
+		}
+	}
+
+	if (!actual_map->altWalls.empty()) {
+		altWallsTime -= seconds_elapsed;
+		if (altWallsTime <= 0) {
+			altWallsTime = 1.0f;
+			alternateWalls();
 		}
 	}
 
@@ -491,7 +518,7 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		}
 	}
 
-	if (event.keysym.sym == SDLK_d) {
+	if (event.keysym.sym == SDLK_e) {
 		debugMode = !debugMode;
 	}
 
@@ -1261,5 +1288,40 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 		b.stateTimer = 0.0f;
 		break;
 	}
+	}
+}
+
+void Game::alternateWalls() {
+	int lif = actual_map->getLayerIndex("Funcional");
+	for (auto& wall : actual_map->altWalls) {
+		actual_map->getCell(wall.position.x, wall.position.y, lif).type = (actual_map->getCell(wall.position.x, wall.position.y, lif).type == MID_WALL) ? BLACKTILE : MID_WALL;
+		actual_map->getCell(wall.position.x + 1, wall.position.y, lif).type = (actual_map->getCell(wall.position.x + 1, wall.position.y, lif).type == MID_WALL) ? BLACKTILE : MID_WALL;
+		actual_map->getCell(wall.position.x, wall.position.y + 1, lif).type = (actual_map->getCell(wall.position.x, wall.position.y + 1, lif).type == MID_WALL) ? BLACKTILE : MID_WALL;
+		actual_map->getCell(wall.position.x + 1, wall.position.y + 1, lif).type = (actual_map->getCell(wall.position.x + 1, wall.position.y + 1, lif).type == MID_WALL) ? BLACKTILE : MID_WALL;
+		wall.active = !wall.active;
+	}
+}
+
+void Game::renderAltWalls(Image& framebuffer) {
+	for (auto& aw : actual_map->altWalls) {
+		int gid = aw.active ? ALT_WALL_1_GID : ALT_WALL_2_GID;
+		sTileset* ts = actual_map->getTilesetForGID(gid);
+		if (!ts || ts->texture.width == 0) continue;
+
+		int screenx = aw.position.x * actual_map->tile_width;
+		int screeny = aw.position.y * actual_map->tile_height;
+
+		if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
+			screeny < -ts->tileHeight || screeny >= (int)framebuffer.height) //Frustum culling in case the cell is out of the screen
+			continue;
+
+		int localTileId = gid - ts->firstgid;
+		int num_tiles_x = ts->texture.width / ts->tileWidth;
+
+		int tilex = (localTileId % num_tiles_x) * ts->tileWidth;
+		int tiley = (localTileId / num_tiles_x) * ts->tileHeight;
+
+		Area area(tilex, tiley, ts->tileWidth*2, ts->tileHeight*2);
+		framebuffer.drawImage(ts->texture, screenx, screeny, area);
 	}
 }

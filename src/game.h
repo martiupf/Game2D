@@ -61,6 +61,8 @@ struct sObject {
 struct altWall {
 	Vector2 position;
 	bool active;
+	int width = 16;
+	int height = 16;
 };
 
 struct Bullet {
@@ -214,6 +216,7 @@ public:
 		}
 		return selected;
 	}
+	std::vector<altWall> altWalls;
 
 	bool isXAtPosition(float worldX, float worldY, eCellType type);
 };
@@ -235,7 +238,6 @@ public:
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
 	Image hurtImage;
-	std::vector<altWall> altWalls;
 
 	static Game* instance;
 	eGameState state = START_SCREEN;
@@ -248,6 +250,7 @@ public:
 	Player player;
 	Vector2 spawnPos;
 	bool debugMode = false;
+	float altWallsTime = 0.0f;
 
 	//some globals
 	long frame;
@@ -317,6 +320,8 @@ public:
 	void generateHomingBall(Vector2 origin);
 	Vector2 getTeleportPosFarFromPlayer(float minDistance, Enemy& e);
 	void updateBoss(Enemy& b, float seconds_elapsed);
+	void alternateWalls();
+	void renderAltWalls(Image& framebuffer);
 };
 
 
