@@ -15,8 +15,7 @@
 #include "utils.h"
 #include "synth.h"
 
-enum eCellType: uint16 {EMPTY, START, WALL, DOOR, CHEST};
-enum eItemType: uint16 {NOTHING, SWORD, POTION};
+enum eCellType: uint16 {EMPTY, WALL, MID_WALL, BLACKTILE, ALT_WALL};
 
 enum eGameState {
 	START_SCREEN,
@@ -24,7 +23,7 @@ enum eGameState {
 	VICTORY
 };
 
-enum eBossState {
+enum eBossState { //Diferent states to change enemy behaviours
 	BOSS_IDLE,
 	BOSS_TRIPLE_SHOT,
 	BOSS_TELEGRAPH_DASH,
@@ -41,7 +40,6 @@ enum eBossPhase {
 
 struct sCell {
 	eCellType type = EMPTY;
-	eItemType item = NOTHING;
 	int tileId = 0; //Id from Tiled tileset maps
 };
 
@@ -110,6 +108,7 @@ struct Enemy {
 	int teleportCount = 0;
 	int maxTeleports;
 	float teleportTimer = 0.0f;
+	bool this_teleport_shoot = false;
 };
 
 struct Player {
@@ -145,7 +144,7 @@ struct Fireball {
 	Vector2 position;
 	Vector2 dir;
 	Vector2 velocity = Vector2(0.0f, 0.0f);
-	bool isHoming = false;
+	bool isHoming = false; //Different type of fireball that follows the player
 	float lifetime = 6.0f;
 
 	int width = 4;
@@ -209,14 +208,21 @@ public:
 		return selected;
 	}
 
-	bool isWallAtPosition(float worldX, float worldY);
+	bool isXAtPosition(float worldX, float worldY, eCellType type);
 };
 
 class Game
 {
 public:
+	Image bulletImage;
+	Image heartImage;
+	Image titleImage;
 	Image victoryImage;
 	Image enemyImage;
+	Image font;
+	Image minifont;
+	Image sprite;
+	Image tileset;
 	std::vector<Enemy> enemies;
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
@@ -230,7 +236,6 @@ public:
 	SDL_Renderer* renderer;
 	int window_width;
 	int window_height;
-	Vector2 cameraPos = Vector2(0, 0); //Change this after
 	Player player;
 	Vector2 spawnPos;
 

@@ -10,7 +10,7 @@
 #define WALL_GID 910
 #define CHARACTER_SPRITE_GID 2241
 
-bool GameMap::isWallAtPosition(float worldX, float worldY) {
+bool GameMap::isXAtPosition(float worldX, float worldY, eCellType type) { //This function checks if the cell's type with coordinates (worldX, worldY) is the "type" variable
 	int tileX = (int)worldX / this->tile_width;
 	int tileY = (int)worldY / this->tile_height;
 
@@ -21,10 +21,10 @@ bool GameMap::isWallAtPosition(float worldX, float worldY) {
 	int layerIdx = this->getLayerIndex("Funcional");
 	if (layerIdx < 0) return false;
 
-	return (this->layers[layerIdx].data[tileY*this->width + tileX].type == WALL);
+	return (this->layers[layerIdx].data[tileY*this->width + tileX].type == type);
 }
 
-bool Game::bulletIsActive(Bullet b) {
+bool Game::bulletIsActive(Bullet b) { //Checks collisions with walls
 	int offsetX, offsetY, width, height;
 	if (b.dirX != 0) {
 		offsetX = 0; offsetY = 3;
@@ -34,11 +34,11 @@ bool Game::bulletIsActive(Bullet b) {
 		offsetX = 3; offsetY = 0;
 		width = 4; height = 10;
 	}
-	else return false;
-	if (this->actual_map->isWallAtPosition(b.x+offsetX, b.y+offsetY)) return false;
-	if (this->actual_map->isWallAtPosition(b.x+offsetX+width-1, b.y + offsetY)) return false;
-	if (this->actual_map->isWallAtPosition(b.x + offsetX, b.y + offsetY + height-1)) return false;
-	if (this->actual_map->isWallAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1)) return false;
+	else return false; //We check every corner of the bullet
+	if (this->actual_map->isXAtPosition(b.x+offsetX, b.y+offsetY, WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x+offsetX+width-1, b.y + offsetY, WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX, b.y + offsetY + height-1, WALL)) return false;
+	if (this->actual_map->isXAtPosition(b.x + offsetX + width-1, b.y + offsetY + height-1, WALL)) return false;
 	return true;
 }
 
@@ -106,7 +106,7 @@ GameMap* loadGameMap(const char* filename) {
 					sCell& cell = map->getCell(x, y, l);
 					cell.tileId = rawGid;
 
-					if (layerName == "Funcional" || layerName == "funcional") {
+					if (layerName == "Funcional" || layerName == "funcional") { //We transform the GID to a type
 						if (rawGid == 0) cell.type = EMPTY;
 						else if (rawGid == WALL_GID) cell.type = WALL;
 					}
@@ -119,14 +119,9 @@ GameMap* loadGameMap(const char* filename) {
 
 Game* Game::instance = NULL;
 
-Image font;
-Image minifont;
-Image sprite;
-Image tileset;
+
 Color bgcolor(130, 80, 100);
-Image bulletImage;
-Image heartImage;
-Image titleImage;
+
 
 Game::Game(int window_width, int window_height, SDL_Window* window)
 {
@@ -163,7 +158,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 }
 
 void Game::shootBullet() {
-	if (player.shootCooldown > 0.0f) return;
+	if (player.shootCooldown > 0.0f) return; //Player cannot shoot if it's in cooldown
 	Bullet newBullet;
 
 	float bulletWidth = 10.0f;
@@ -180,7 +175,6 @@ void Game::shootBullet() {
 	case 2: newBullet.dirX = 1.0f; newBullet.dirY = 0.0f; newBullet.bulletWidth = 10; newBullet.bulletHeight = 4; newBullet.offsetX = 0; newBullet.offsetY = 3; break;
 	default: newBullet.dirX = 0.0f; newBullet.dirY = 1.0f; break;
 	}
-	
 
 	//Extracted from the hitbox of checkPlayerCollision
 	float offsetX = 4.0f;
@@ -206,7 +200,7 @@ void Game::updateBullets(float seconds_elapsed) {
 		b.active = bulletIsActive(b);
 	}
 
-	player.playerBullets.erase(
+	player.playerBullets.erase( //Remove !active bullets
 		std::remove_if(player.playerBullets.begin(), player.playerBullets.end(), [](const Bullet& b) {
 			return !b.active;
 			}),
@@ -216,15 +210,15 @@ void Game::updateBullets(float seconds_elapsed) {
 
 void Game::renderBullets(Image& framebuffer) {
 	for (const auto& b : player.playerBullets) {
-		float screenX = b.x - cameraPos.x;
-		float screenY = b.y - cameraPos.y;
+		float screenX = b.x;
+		float screenY = b.y;
 
 		if (screenX < -16 || screenX > window_width || screenY < -16 || screenY > window_height) {
 			return;
 		}
 
 		int srcX;
-
+		//Change X depending on the direction of the bullet
 		if (b.dirX == 1) {
 			srcX = 10;
 		}
@@ -288,8 +282,8 @@ void Game::render(void)
 				sTileset* ts = actual_map->getTilesetForGID(gid);
 				if (!ts || ts->texture.width == 0) continue;
 
-				int screenx = x * actual_map->tile_width - cameraPos.x;
-				int screeny = y * actual_map->tile_height - cameraPos.y;
+				int screenx = x * actual_map->tile_width;
+				int screeny = y * actual_map->tile_height;
 
 				if (screenx < -ts->tileWidth || screenx >= (int)framebuffer.width ||
 					screeny < -ts->tileHeight || screeny >= (int)framebuffer.height) //Frustum culling in case the cell is out of the screen
@@ -308,15 +302,15 @@ void Game::render(void)
 	}
 	bool renderPlayer = true;
 	if (player.invincibilityTimer > 0.0f) {
-		// Alterna visibilidad cada frame convirtiendo el tiempo a ms o usando fmod
-		int flash = (int)(player.invincibilityTimer * 20.0f); // Cambia el '20' para parpadear más/menos rápido
+		// Flashes the renerization of the player to create an invincibility effect when it is hurt
+		int flash = (int)(player.invincibilityTimer * 20.0f);
 		if (flash % 2 == 0) {
 			renderPlayer = false;
 		}
 	}
 	if (renderPlayer) {
-		int playerScreenX = (int)player.position.x - (int)cameraPos.x;
-		int playerScreenY = (int)player.position.y - (int)cameraPos.y;
+		int playerScreenX = (int)player.position.x;
+		int playerScreenY = (int)player.position.y;
 
 		int spriteFrame = player.spriteFrame;
 		if (player.teleportCooldown > 0.0f) {
@@ -329,21 +323,17 @@ void Game::render(void)
 		Area playerArea(tileX, tileY, player.width, player.height);
 		framebuffer.drawImage(sprite, playerScreenX, playerScreenY, playerArea);
 	}
-
-	// --- RENDERIZAR ENEMIGOS ---
 	renderFireballs(framebuffer);
 	renderBullets(framebuffer);
-	renderEnemies(framebuffer); // <-- AÑADIDO
+	renderEnemies(framebuffer);
 	renderStageItem(framebuffer);
 	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180));
 	renderHearts(framebuffer);
-
 	showFramebuffer(&framebuffer);
 }
 
 void Game::update(double seconds_elapsed)
 {
-
 	if (state == START_SCREEN) {
 		return;
 	}
@@ -448,12 +438,12 @@ void Game::update(double seconds_elapsed)
 		float playerHitX = player.position.x + player.offsetX;
 		float playerHitY = player.position.y + player.offsetY;
 
-		if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight,
+		if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight, //Check if the player touches the item
 			nextStageItem.position.x, nextStageItem.position.y,
 			nextStageItem.width, nextStageItem.height)) {
 
 			nextStageItem.active = false;
-			loadNextStage(); // <-- Cambia automáticamente al siguiente mapa
+			loadNextStage();
 		}
 	}
 }
@@ -645,6 +635,7 @@ void Game::onAudio(float *buffer, unsigned int len, double time, SDL_AudioSpec& 
 
 bool Game::checkPlayerCollision(float nextX, float nextY)
 {
+	//This values could be in the player struct but they are only used in 2 functions
 	float offsetX = 4.0f;
 	float offsetY = 10.0f;
 	float width = 8.0f;
@@ -655,10 +646,10 @@ bool Game::checkPlayerCollision(float nextX, float nextY)
 	float top = nextY + offsetY;
 	float bottom = nextY + offsetY + height - 1.0f;
 
-	if (actual_map->isWallAtPosition(left, top))     return true;
-	if (actual_map->isWallAtPosition(right, top))    return true;
-	if (actual_map->isWallAtPosition(left, bottom))  return true;
-	if (actual_map->isWallAtPosition(right, bottom)) return true;
+	if (actual_map->isXAtPosition(left, top, WALL))     return true;
+	if (actual_map->isXAtPosition(right, top, WALL))    return true;
+	if (actual_map->isXAtPosition(left, bottom, WALL))  return true;
+	if (actual_map->isXAtPosition(right, bottom, WALL)) return true;
 
 	return false;
 }
@@ -666,7 +657,7 @@ bool Game::checkPlayerCollision(float nextX, float nextY)
 void Game::teleport() {
 	if (!actual_map || player.isTeleporting) return;
 
-	// Si está en cooldown, no permite usar el TP
+	//Tp has a cooldown
 	if (player.teleportCooldown > 0.0f) return;
 
 	int maxPixels = 5 * actual_map->tile_width;
@@ -687,6 +678,7 @@ void Game::teleport() {
 	float width = 8.0f;
 	float height = 6.0f;
 
+	//Checks every pixel to know wich one is the farest where the player can teleport. It can cross walls
 	for (int step = maxPixels; step >= 1; --step) {
 		Vector2 candidatePos(
 			player.position.x + dirVec.x * (float)step,
@@ -707,7 +699,7 @@ void Game::teleport() {
 			player.teleportStartPos = player.position;
 			player.teleportTargetPos = candidatePos;
 			player.teleportElapsed = 0.0f;
-			player.teleportCooldown = 3.0f;
+			player.teleportCooldown = 1.0f;
 			break;
 		}
 	}
@@ -743,10 +735,10 @@ bool Game::checkEnemyCollision(const Enemy& e, float nextX, float nextY) {
 	float top = nextY + e.pOffsetY;
 	float bottom = nextY + e.pOffsetY + e.hitHeight - 1.0f;
 
-	if (actual_map->isWallAtPosition(left, top))     return true;
-	if (actual_map->isWallAtPosition(right, top))    return true;
-	if (actual_map->isWallAtPosition(left, bottom))  return true;
-	if (actual_map->isWallAtPosition(right, bottom)) return true;
+	if (actual_map->isXAtPosition(left, top, WALL))     return true;
+	if (actual_map->isXAtPosition(right, top, WALL))    return true;
+	if (actual_map->isXAtPosition(left, bottom, WALL))  return true;
+	if (actual_map->isXAtPosition(right, bottom, WALL)) return true;
 
 	return false;
 }
@@ -756,7 +748,7 @@ float fireball_timer = 1.0f;
 void Game::updateEnemies(float seconds_elapsed) {
 
 	fireball_timer -= seconds_elapsed;
-	// Hitbox del jugador
+	// Player hitbox
 	float playerHitX = player.position.x + player.offsetX;
 	float playerHitY = player.position.y + player.offsetY;
 
@@ -774,7 +766,7 @@ void Game::updateEnemies(float seconds_elapsed) {
 		float enemyHitX = e.position.x + e.pOffsetX;
 		float enemyHitY = e.position.y + e.pOffsetY;
 
-		// Colisión con la hitbox del jugador
+		//Check the collision with player
 		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
 			if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight,enemyHitX, enemyHitY, e.hitWidth, e.hitHeight)) {
 				player.health -= 1;
@@ -788,7 +780,17 @@ void Game::updateEnemies(float seconds_elapsed) {
 			e.animTimer = 0.0f;
 		}
 		if (fireball_timer <= 0) {
-			generateFireball(e.position.x + e.width / 2, e.position.y + e.height / 2, 0, 1);
+			int random = rand() % 3;
+			float ex = e.position.x + e.width / 2.0f;
+			float ey = e.position.y + e.height / 2.0f;
+			//1 of every fireball is direct to the player. The other 2 are vertical
+			if (random == 0) {
+				generateFireball(ex, ey, (player.position.x + player.width / 2.0f) - ex, (player.position.y + player.height / 2.0f) - ey);
+			}
+			else {
+				generateFireball(ex, ey, 0, 1);
+			}
+			
 			fireball_timer = 1;
 		}
 	}
@@ -798,36 +800,32 @@ void Game::renderEnemies(Image& framebuffer) {
 	for (const auto& e : enemies) {
 		if (!e.active) continue;
 
-		float screenX = e.position.x - cameraPos.x;
-		float screenY = e.position.y - cameraPos.y;
+		float screenX = e.position.x;
+		float screenY = e.position.y;
 
-		// Frustum culling básico
+		// Frustum culling
 		if (screenX < -e.width || screenX > framebuffer.width || screenY < -e.height || screenY > framebuffer.height) {
 			continue;
 		}
 		
 		if (e.hitTimer > 0.0f) {
 			float progress = (e.maxTimer - e.hitTimer) / e.maxTimer;
-
-			// 2. Definir el salto de frame y los frames restantes
-			int startFrame = 1; // Nos saltamos el frame 0 y empezamos en el 1
-			int totalFrames = 5; // Nos quedan 5 frames por mostrar (1, 2, 3, 4, 5)
+			int startFrame = 1; //I skipped frame 0 because it makes the reaction faster and this improves the feeling of the game
+			int totalFrames = 5;
 
 			int frameIndex = startFrame + (int)(progress * totalFrames);
-
-			// Evitar que se pase del último frame (índice 5) por precisión flotante
 			if (frameIndex > 5) {
 				frameIndex = 5;
 			}
 
 			int srcX = frameIndex * e.width;
-			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3; // S'ha de canviar
+			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3; //We don't use up and down directions for the enemy
 			Area area(srcX, srcY, e.width, e.height);
 			framebuffer.drawImage(hurtImage, (int)screenX, (int)screenY, area);
 		}
 		else {
 			int srcX = e.spriteFrame * e.width;
-			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3; // S'ha de canviar
+			int srcY = (e.dirX < 0) ? e.height * 2 : e.height * 3;
 			Area area(srcX, srcY, e.width, e.height);
 			framebuffer.drawImage(enemyImage, (int)screenX, (int)screenY, area);
 		}
@@ -844,10 +842,10 @@ void Game::checkBulletEnemyCollisions() {
 			if (checkAABBCollision(b.x + b.offsetX, b.y + b.offsetY, b.bulletWidth, b.bulletHeight, e.position.x + e.bOffsetX, e.position.y + e.bOffsetY, e.impactWidth, e.impactHeight)) {
 				b.active = false;
 				e.hitTimer = e.maxTimer;
-				if (--e.health <= 0) {
+				if (--e.health <= 0) { //This kills the enemy
 					e.active = false;
 					if (e.isBoss) {
-						nextStageItem.position = e.position + Vector2(e.width/2, e.height/2);
+						nextStageItem.position = e.position + Vector2(e.width/2, spawnPos.y); //We spawn the item at the same height as the spawn pos. Some maps are made as you cannot enter the enemy area to take the item
 						nextStageItem.active = true;
 					}
 				}
@@ -882,10 +880,10 @@ bool Game::checkFireballWallCollision(const Fireball& fb) {
 	float top = fb.position.y + fb.hitOffsetY;
 	float bottom = fb.position.y + fb.hitOffsetY + fb.hitHeight - 1.0f;
 
-	if (actual_map->isWallAtPosition(left, top))     return true;
-	if (actual_map->isWallAtPosition(right, top))    return true;
-	if (actual_map->isWallAtPosition(left, bottom))  return true;
-	if (actual_map->isWallAtPosition(right, bottom)) return true;
+	if (actual_map->isXAtPosition(left, top, WALL))     return true;
+	if (actual_map->isXAtPosition(right, top, WALL))    return true;
+	if (actual_map->isXAtPosition(left, bottom, WALL))  return true;
+	if (actual_map->isXAtPosition(right, bottom, WALL)) return true;
 
 	return false;
 }
@@ -894,44 +892,39 @@ void Game::updateFireballs(float seconds_elapsed) {
 	for (auto& fb : fireballs) {
 		if (!fb.active) continue;
 
-		if (fb.isHoming) {
+		if (fb.isHoming) { //Fireballs with inertia
 			fb.lifetime -= seconds_elapsed;
 			if (fb.lifetime <= 0.0f) {
 				fb.active = false;
 				continue;
 			}
-
-			// --- FÍSICA CON INERCIA (TOREAR) ---
 			Vector2 targetDir(player.position.x - fb.position.x, player.position.y - fb.position.y);
 			float len = std::sqrt(targetDir.x * targetDir.x + targetDir.y * targetDir.y);
 			if (len > 0.0f) {
-				targetDir.x /= len;
+				targetDir.x /= len; //Normalize vector
 				targetDir.y /= len;
 			}
 
 			Vector2 desiredVel(targetDir.x * fb.speed, targetDir.y * fb.speed);
 
-			// turnRate controla la inercia: valores más bajos (2.5 - 3.5) hacen que le cueste girar
+			//turnRate controls inertia
 			float turnRate = 3.0f;
-			fb.velocity.x += (desiredVel.x - fb.velocity.x) * turnRate * seconds_elapsed;
+			fb.velocity.x += (desiredVel.x - fb.velocity.x) * turnRate * seconds_elapsed; //Changes the velocity with inertia
 			fb.velocity.y += (desiredVel.y - fb.velocity.y) * turnRate * seconds_elapsed;
 
 			fb.position.x += fb.velocity.x * seconds_elapsed;
 			fb.position.y += fb.velocity.y * seconds_elapsed;
 		}
 		else {
-			// Movimiento rectilíneo normal
+			//Without inertia
 			fb.position.x += fb.dir.x * fb.speed * seconds_elapsed;
 			fb.position.y += fb.dir.y * fb.speed * seconds_elapsed;
 		}
-
-		// Colisión con paredes
 		if (checkFireballWallCollision(fb)) {
 			fb.active = false;
 			continue;
 		}
-
-		// Colisión con jugador
+		// Player collision
 		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
 			float fbHitX = fb.position.x + fb.hitOffsetX;
 			float fbHitY = fb.position.y + fb.hitOffsetY;
@@ -945,8 +938,6 @@ void Game::updateFireballs(float seconds_elapsed) {
 			}
 		}
 	}
-
-	// Limpieza de inactivas...
 	fireballs.erase(
 		std::remove_if(fireballs.begin(), fireballs.end(), [](const Fireball& fb) { return !fb.active; }),
 		fireballs.end()
@@ -957,12 +948,10 @@ void Game::renderFireballs(Image& framebuffer) {
 	for (const auto& fb : fireballs) {
 		if (!fb.active) continue;
 
-		// 1. Transformar posición del mundo a posición de pantalla
-		int screenX = (int)(fb.position.x - cameraPos.x);
-		int screenY = (int)(fb.position.y - cameraPos.y);
+		int screenX = (int)(fb.position.x);
+		int screenY = (int)(fb.position.y);
 
-		// 2. Frustum Culling (no dibujar si está fuera de la pantalla)
-		// Usamos fb.width y height
+		//Frustum culling
 		if (screenX < -fb.width || screenX > framebuffer.width ||
 			screenY < -fb.height || screenY > framebuffer.height) {
 			continue;
@@ -974,16 +963,14 @@ void Game::renderFireballs(Image& framebuffer) {
 
 void Game::loadStage(int stageIndex) {
 	if (stageIndex < 0 || stageIndex >= (int)stageFiles.size()) {
-		std::cout << "¡Has completado todos los niveles!" << std::endl;
-		state = VICTORY; // O un estado de Victoria/Créditos
+		state = VICTORY;
 		return;
 	}
 
 	currentStage = stageIndex;
 
-	// 1. Liberar el mapa anterior de la memoria
+	// Free old map's memory
 	if (actual_map != nullptr) {
-		// Asumiendo que tu struct sLayer tiene arrays creados con new
 		for (int l = 0; l < actual_map->numLayers; ++l) {
 			delete[] actual_map->layers[l].data;
 		}
@@ -992,24 +979,22 @@ void Game::loadStage(int stageIndex) {
 		actual_map = nullptr;
 	}
 
-	// 2. Cargar el nuevo mapa
 	actual_map = loadGameMap(stageFiles[currentStage].c_str());
 
-	// 3. Resetear entidades de la partida
+	//Reset all entities
 	player.playerBullets.clear();
 	fireballs.clear();
 	enemies.clear();
 	nextStageItem.active = false;
-
-	// 4. Reposicionar al jugador en el punto de spawn del nuevo mapa
+	player.teleportTargetPos = spawnPos; //Prevents from an error if player took the item while teleporting
 	player.position = spawnPos;
 
-	// 5. Generar los enemigos/Boss específicos del nivel
+	//Generate enemies
 	Enemy boss;
 	boss.position = Vector2(30.0f, 0.0f);
 	boss.spawnPos = boss.position;
 	boss.health = 10;
-	boss.isBoss = true; // <-- Marcado como Boss
+	boss.isBoss = true;
 	enemies.push_back(boss);
 }
 
@@ -1024,14 +1009,14 @@ void Game::renderStageItem(Image& framebuffer) {
 	int screenY = (int)(nextStageItem.position.y);
 
 	Area area(0, 0, nextStageItem.width, nextStageItem.height);
-	framebuffer.drawImage(heartImage, screenX, screenY, area); // Cambia por tu imagen de portal/ítem
+	framebuffer.drawImage(heartImage, screenX, screenY, area);
 }
 
 void Game::generateTripleShot(Vector2 origin, Vector2 targetPos) {
 	Vector2 dirToPlayer(targetPos.x - origin.x, targetPos.y - origin.y);
 	float baseAngle = std::atan2(dirToPlayer.y, dirToPlayer.x);
 
-	// 30 grados expresados en radianes (~0.5235 rad)
+	//30º angle
 	float spread = 30.0f * (3.14159265f / 180.0f);
 
 	float angles[3] = { baseAngle - spread, baseAngle, baseAngle + spread };
@@ -1049,7 +1034,7 @@ void Game::generateHomingBall(Vector2 origin) {
 	fb.speed = 50.0f; //max speed
 	fb.lifetime = 6.0f;
 
-	// Velocidad inicial hacia el jugador
+	//Starting velocity aims the player position
 	Vector2 dir(player.position.x - origin.x, player.position.y - origin.y);
 	float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
 	if (len > 0.0f) {
@@ -1069,14 +1054,15 @@ Vector2 Game::getTeleportPosFarFromPlayer(float minDistance, Enemy& e) {
 	float mapW = (float)(actual_map->width * actual_map->tile_width);
 	float mapH = (float)(actual_map->height * actual_map->tile_height);
 
-	// Lista de las 4 esquinas del mapa
+	//The 4th corners of the map where the boss can teleport
 	std::vector<Vector2> corners = {
-		Vector2(margin - e.bOffsetX, margin - e.bOffsetY),                               // Superior Izquierda
-		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, margin - e.bOffsetY),                // Superior Derecha
-		Vector2(margin - e.bOffsetX, mapH - margin - e.bOffsetY - e.impactHeight),                // Inferior Izquierda
-		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, mapH - margin - e.bOffsetY - e.impactHeight)  // Inferior Derecha
+		Vector2(margin - e.bOffsetX, margin - e.bOffsetY),
+		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, margin - e.bOffsetY),
+		Vector2(margin - e.bOffsetX, mapH - margin - e.bOffsetY - e.impactHeight),
+		Vector2(mapW - margin - e.bOffsetX - e.impactWidth, mapH - margin - e.bOffsetY - e.impactHeight)
 	};
 
+	//Check if the distance with the player is higher than minDistance to make this a valid corner
 	std::vector<Vector2> validCorners;
 	for (const auto& corner : corners) {
 		float dx = corner.x + e.width/2 - player.position.x - player.width/2;
@@ -1088,7 +1074,6 @@ Vector2 Game::getTeleportPosFarFromPlayer(float minDistance, Enemy& e) {
 		}
 	}
 
-	// Si ninguna está bastante lejos, elige una esquina aleatoria
 	if (validCorners.empty()) {
 		return corners[rand() % corners.size()];
 	}
@@ -1100,36 +1085,34 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 
 	switch (b.state) {
 
-		// --- ESTADO REPOSO / ELECCIÓN DE ATAQUE ---
+	//Normal behaviour while not attacking
 	case BOSS_IDLE: {
-		// Movimiento flotante/caminar básico
+		//Walking from side to side
 		float nextX = b.position.x + (b.dirX * b.speed * seconds_elapsed);
 		if (checkEnemyCollision(b, nextX, b.position.y)) b.dirX *= -1;
 		else b.position.x = nextX;
 
-		// COOLDOWN NORMAL ENTRE ATAQUES
+		//Cooldown between attacks
 		b.cooldownTimer -= seconds_elapsed;
 		if (b.cooldownTimer <= 0.0f) {
 			b.cooldownTimer = 5.0f;
-			int roll = rand() % 3;
+			int roll = rand() % 3; //Random attack
 			if (roll == 0) {
-				b.state = BOSS_TRIPLE_SHOT; // Disparo Áspid
+				b.state = BOSS_TRIPLE_SHOT;
 			}
 			else if (roll == 1) {
-				b.state = BOSS_TELEGRAPH_TELEPORT; // 4 Teleports
+				b.state = BOSS_TELEGRAPH_TELEPORT;
 				b.teleportCount = 0;
 			}
 			else {
-				b.state = BOSS_HOMING; // Bola teledirigida
+				b.state = BOSS_HOMING;
 			}
 			b.stateTimer = 0.0f;
 			break;
 		}
-
-		// REGLA DE PUNIGO: Si el jugador se pone a su misma altura en Y (+/- 16px)
+		//If the player goes to the same height as the enemy it dashes to get him
 		float diffY = std::abs((player.position.y + player.height / 2) - (b.position.y + b.height / 2));
 		if (diffY < 16.0f) {
-			// Carga embestida de inmediato para sacarlo de su altura
 			b.state = BOSS_TELEGRAPH_DASH;
 			b.stateTimer = 0.0f;
 			float dirX = (player.position.x > b.position.x) ? 1.0f : -1.0f;
@@ -1146,10 +1129,9 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 		b.stateTimer = 0.0f;
 		break;
 	}
-						 // --- ATAQUE 2: EMBESTIDA POR ALINEACIÓN EN Y ---
-	case BOSS_TELEGRAPH_DASH: {
+	case BOSS_TELEGRAPH_DASH: { //State between idle and dash where the boss charges the attack
 		b.cooldownTimer -= seconds_elapsed;
-		if (b.stateTimer >= 1.0f) {
+		if (b.stateTimer >= 1.5f) {
 			b.state = BOSS_DASH;
 			b.stateTimer = 0.0f;
 		}
@@ -1164,14 +1146,13 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 			b.position.x += moveX;
 		}
 
-		if (b.stateTimer >= 0.35f) { // Duración del dash
+		if (b.stateTimer >= 0.35f) { //dash duration
 			b.state = BOSS_IDLE;
 			b.stateTimer = 0.0f;
 		}
 		break;
 	}
 
-				  // --- ATAQUE 3: 4 TELEPORTS RÁPIDOS Y DISPARO TRIPLE ---
 	case BOSS_TELEGRAPH_TELEPORT: {
 		if (b.stateTimer >= 0.3f) {
 			b.maxTeleports = 3 + (rand() % 4); //random between 3 and 7
@@ -1182,24 +1163,23 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 	}
 	case BOSS_TELEPORT: {
 		b.teleportTimer += seconds_elapsed;
-
-		if (b.teleportTimer >= 1.0f) { // Realiza un teleport cada 0.4s
-			b.teleportTimer = 0.0f;
-
-			// 1. Teleport a esquina lejana (mínimo 70px de distancia del jugador)
-			b.position = getTeleportPosFarFromPlayer(50.0f, b);
-
-			// 2. Dispara el triple abanico desde la nueva posición
+		if (!b.this_teleport_shoot && b.teleportTimer > 0.5f) {
 			Vector2 center(b.position.x + b.width / 2, b.position.y + b.height / 2);
 			generateTripleShot(center, Vector2(player.position.x + player.width / 2, player.position.y + player.height / 2));
+			b.this_teleport_shoot = true;
+		}
 
-			b.teleportCount++;
-
-			// Tras 4 teleports, termina el ataque
-			if (b.teleportCount >= b.maxTeleports) {
+		if (b.teleportTimer >= 1.0f) { //Teleports every 1 second
+			if (b.teleportCount > b.maxTeleports) {
 				b.position = b.spawnPos;
 				b.state = BOSS_IDLE;
 				b.stateTimer = 0.0f;
+			}
+			else {
+				b.this_teleport_shoot = false;
+				b.teleportTimer = 0.0f;
+				b.position = getTeleportPosFarFromPlayer(50.0f, b);
+				b.teleportCount++;
 			}
 		}
 		break;
