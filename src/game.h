@@ -139,7 +139,7 @@ struct Player {
 	float teleportElapsed = 0.0f;
 	float shootCooldown = 0.0f;
 
-	int health = 3;
+	int health = 5;
 	float invincibilityTimer = 0.0f;
 
 	float offsetX = 4.0f;

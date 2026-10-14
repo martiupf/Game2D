@@ -175,14 +175,14 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 
 	font.load("data/bitmap-font-white.tga"); //load bitmap-font image
 	minifont.load("data/mini-font-white-4x6.tga"); //load bitmap-font image
-	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
+	sprite.load("data/03-soldier.png"); //Loads the character sprite
 	bulletImage.load("data/pixil-frame-0.png");
 	heartImage.load("data/hearts.png");
 	titleImage1.load("data/start_screen_1.png");
 	titleImage2.load("data/start_screen_2.png");
-	enemyImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_walk_without_shadow.png");
+	enemyImage.load("data/orc3_walk_without_shadow.png");
 	fireballImage.load("data/fireball_como_el_pitbull.png");
-	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
+	hurtImage.load("data/orc3_hurt_without_shadow.png");
 	victoryImage.load("data/victory_screen.png");
 	nextStageItemImage.load("data/nextStageItem.png");
 	tutorialImage.load("data/tutorial_screen.png");
@@ -385,7 +385,7 @@ void Game::render(void)
 	renderBullets(framebuffer);
 	renderEnemies(framebuffer);
 	renderStageItem(framebuffer);
-	framebuffer.drawRectangle(0, 0, 23, 9, Color(180, 180, 180));
+	framebuffer.drawRectangle(0, 0, 37, 9, Color(180, 180, 180));
 	renderHearts(framebuffer);
 	showFramebuffer(&framebuffer);
 }
@@ -851,7 +851,7 @@ void Game::renderHearts(Image& framebuffer) {
 		screenX += 7;
 		hearts_drawn += 1;
 	}
-	while (hearts_drawn < 3) {
+	while (hearts_drawn < 5) {
 		Area area(0, 0, 7, 7);
 		framebuffer.drawImage(heartImage, screenX, 1, area);
 		screenX += 7;
@@ -1120,7 +1120,7 @@ void Game::loadStage(int stageIndex) {
 		state = VICTORY;
 		return;
 	}
-	player.health = 3;
+	player.health = 5;
 
 	if (song_playback) {
 		song_playback->stop();
