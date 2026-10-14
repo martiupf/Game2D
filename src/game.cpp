@@ -178,18 +178,21 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	sprite.load("data/16x16-RPG-characters/16x16-RPG-characters/sprites/old-style/03-soldier.png"); //Loads the character sprite
 	bulletImage.load("data/pixil-frame-0.png");
 	heartImage.load("data/hearts.png");
-	titleImage.load("data/start_screen.png");
+	titleImage1.load("data/start_screen_1.png");
+	titleImage2.load("data/start_screen_2.png");
 	enemyImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_walk_without_shadow.png");
 	fireballImage.load("data/fireball_como_el_pitbull.png");
 	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
-	victoryImage.load("data/credits.png");
+	victoryImage.load("data/victory_screen.png");
 	nextStageItemImage.load("data/nextStageItem.png");
 	tutorialImage.load("data/tutorial_screen.png");
+	deadImage.load("data/dead_screen.png");
 
-	srand(static_cast<unsigned int>(std::time(nullptr)));
-	//enableAudio();
-	//synth.playSample("data/coin.wav",1,true);
-	//synth.osc1.amplitude = 0.5;
+	srand(static_cast<unsigned int>(std::time(nullptr))); //Init random
+	enableAudio();
+	bosses[0] = synth.loadSample("data/Boss1.wav");
+	bosses[1] = synth.loadSample("data/Boss2.wav");
+	bosses[2] = synth.loadSample("data/Boss3.wav");
 }
 
 void Game::shootBullet() {
@@ -279,7 +282,13 @@ void Game::render(void)
 	Image framebuffer(160, 120);
 	if (state == START_SCREEN) {
 		Area fullArea(0, 0, 160, 120);
-		framebuffer.drawImage(titleImage, 0, 0, fullArea);
+		if (timerStartScreen > 0.5f) {
+			framebuffer.drawImage(titleImage1, 0, 0, fullArea);
+		}
+		else {
+			framebuffer.drawImage(titleImage2, 0, 0, fullArea);
+		}
+		
 
 		showFramebuffer(&framebuffer);
 		return;
@@ -294,7 +303,7 @@ void Game::render(void)
 
 	if (state == DEAD_SCREEN) {
 		Area fullArea(0, 0, 160, 120);
-		framebuffer.drawImage(victoryImage, 0, 0, fullArea);
+		framebuffer.drawImage(deadImage, 0, 0, fullArea);
 		showFramebuffer(&framebuffer);
 		return;
 	}
@@ -383,11 +392,21 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
-	if (state == START_SCREEN || state == TUTORIAL_SCREEN || state == VICTORY) {
+	if (state == TUTORIAL_SCREEN || state == VICTORY) {
+		return;
+	}
+	if (state == START_SCREEN) {
+		timerStartScreen -= seconds_elapsed;
+		if (timerStartScreen <= 0) {
+			timerStartScreen = 1.0f;
+		}
 		return;
 	}
 
 	if (player.health <= 0 && state == PLAYING) {
+		if (song_playback) {
+			song_playback->stop();
+		}
 		state = DEAD_SCREEN;
 	}
 	if (player.shootCooldown > 0.0f) {
@@ -550,6 +569,9 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
+			if (song_playback) {
+				song_playback->stop();
+			}
 			state = START_SCREEN; // Regresa al menú principal
 			break;
 		}
@@ -558,6 +580,9 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
+			if (song_playback) {
+				song_playback->stop();
+			}
 			state = TUTORIAL_SCREEN;
 			break;
 		}
@@ -569,12 +594,23 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 			loadStage(0);
 			state = PLAYING;
 			break;
+		case SDLK_z:
+			loadStage(0);
+			state = PLAYING;
+			break;
+		case SDLK_x:
+			loadStage(0);
+			state = PLAYING;
+			break;
 		}
 	}
 	else if (state == DEAD_SCREEN) {
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN: 
+			if (song_playback) {
+				song_playback->stop();
+			}
 			state = START_SCREEN; break;
 		}
 	}
@@ -844,16 +880,15 @@ bool Game::checkEnemyCollision(const Enemy& e, float nextX, float nextY) {
 	return false;
 }
 
-float fireball_timer = 1.0f;
-
 void Game::updateEnemies(float seconds_elapsed) {
 
-	fireball_timer -= seconds_elapsed;
+	
 	// Player hitbox
 	float playerHitX = player.position.x + player.offsetX;
 	float playerHitY = player.position.y + player.offsetY;
 
 	for (auto& e : enemies) {
+		e.fireball_timer -= seconds_elapsed;
 		if (!e.active) continue;
 		if (e.hitTimer > 0.0f) {
 			e.hitTimer -= seconds_elapsed;
@@ -882,7 +917,7 @@ void Game::updateEnemies(float seconds_elapsed) {
 			e.spriteFrame = (e.spriteFrame + 1) % 6;
 			e.animTimer = 0.0f;
 		}
-		if (fireball_timer <= 0) {
+		if (e.fireball_timer <= 0) {
 			int random = rand() % 3;
 			float ex = e.position.x + e.width / 2.0f;
 			float ey = e.position.y + e.height / 2.0f;
@@ -894,7 +929,7 @@ void Game::updateEnemies(float seconds_elapsed) {
 				generateFireball(ex, ey, 0, 1);
 			}
 			
-			fireball_timer = 1;
+			e.fireball_timer = rand() % 7 * 0.1 + 0.7f;
 		}
 	}
 }
@@ -1080,12 +1115,17 @@ void Game::renderFireballs(Image& framebuffer) {
 }
 
 void Game::loadStage(int stageIndex) {
-	
+
 	if (stageIndex < 0 || stageIndex >= (int)stageFiles.size()) {
 		state = VICTORY;
 		return;
 	}
 	player.health = 3;
+
+	if (song_playback) {
+		song_playback->stop();
+	}
+	song_playback = synth.playSample(bosses[stageIndex], 1.0f, true);
 
 	currentStage = stageIndex;
 
@@ -1152,7 +1192,7 @@ void Game::generateHomingBall(Vector2 origin) {
 	fb.active = true;
 	fb.isHoming = true;
 	fb.speed = 50.0f; //max speed
-	fb.lifetime = 6.0f;
+	fb.lifetime = rand()%6 + 5;
 
 	//Starting velocity aims the player position
 	Vector2 dir(player.position.x - origin.x, player.position.y - origin.y);
@@ -1215,7 +1255,7 @@ void Game::updateBoss(Enemy& b, float seconds_elapsed) {
 		//Cooldown between attacks
 		b.cooldownTimer -= seconds_elapsed;
 		if (b.cooldownTimer <= 0.0f) {
-			b.cooldownTimer = 5.0f;
+			b.cooldownTimer = rand()%5 + 3;
 			int roll = rand() % 3; //Random attack
 			if (roll == 0) {
 				b.state = BOSS_TRIPLE_SHOT;

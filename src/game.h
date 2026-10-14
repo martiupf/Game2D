@@ -118,6 +118,8 @@ struct Enemy {
 	int maxTeleports;
 	float teleportTimer = 0.0f;
 	bool this_teleport_shoot = false;
+
+	float fireball_timer = 0.0f;
 };
 
 struct Player {
@@ -226,7 +228,8 @@ class Game
 public:
 	Image bulletImage;
 	Image heartImage;
-	Image titleImage;
+	Image titleImage1;
+	Image titleImage2;
 	Image victoryImage;
 	Image enemyImage;
 	Image font;
@@ -235,10 +238,13 @@ public:
 	Image tileset;
 	Image nextStageItemImage;
 	Image tutorialImage;
+	Image deadImage;
 	std::vector<Enemy> enemies;
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
 	Image hurtImage;
+	Synth::Sample* bosses[3] = { nullptr, nullptr, nullptr };
+	Synth::SamplePlayback* song_playback = nullptr;
 
 	static Game* instance;
 	eGameState state = START_SCREEN;
@@ -252,6 +258,7 @@ public:
 	Vector2 spawnPos;
 	bool debugMode = false;
 	float altWallsTime = 0.0f;
+	float timerStartScreen = 0.0f;
 
 	//some globals
 	long frame;
