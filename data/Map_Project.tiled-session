@@ -2,9 +2,9 @@
     "activeFile": "Mapa.tmx",
     "expandedProjectPaths": [
         "Dungeon Gathering Free Version",
-        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3",
+        "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art",
         "."
     ],
@@ -35,10 +35,26 @@
         },
         "Mapa.tmx": {
             "scale": 3,
-            "selectedLayer": 3,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 76.66666666666667,
-                "y": 53.16666666666666
+                "x": 173,
+                "y": 48.49999999999999
+            }
+        },
+        "Mapa2.json": {
+            "scale": 3.7109375,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 80.0336842105263,
+                "y": 59.95789473684211
+            }
+        },
+        "Mapa3.json": {
+            "scale": 3.7109375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 80.0336842105263,
+                "y": 59.95789473684211
             }
         },
         "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx": {
@@ -60,10 +76,14 @@
     "map.tileWidth": 8,
     "map.width": 20,
     "openFiles": [
-        "Mapa.tmx"
+        "Mapa.tmx",
+        "Mapa3.json",
+        "Mapa2.json"
     ],
     "project": "Map_Project.tiled-project",
     "recentFiles": [
+        "Mapa2.json",
+        "Mapa3.json",
         "Mapa.tmx",
         "ammunition-free-asset-pack-40-types-upright-and-diagonal-v0-0lpjqhb4nmcg1.tsx",
         "craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_run_without_shadow.tsx",

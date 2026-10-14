@@ -6,6 +6,8 @@
 #include <fstream>
 
 #include <cmath>
+#include <cstdlib>
+#include <ctime>
 
 #define WALL_GID 910
 #define MID_WALL_GID 1242
@@ -183,6 +185,8 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	victoryImage.load("data/credits.png");
 	nextStageItemImage.load("data/nextStageItem.png");
 	tutorialImage.load("data/tutorial_screen.png");
+
+	srand(static_cast<unsigned int>(std::time(nullptr)));
 	//enableAudio();
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -273,7 +277,6 @@ void Game::renderBullets(Image& framebuffer) {
 void Game::render(void)
 {
 	Image framebuffer(160, 120);
-
 	if (state == START_SCREEN) {
 		Area fullArea(0, 0, 160, 120);
 		framebuffer.drawImage(titleImage, 0, 0, fullArea);
@@ -288,12 +291,14 @@ void Game::render(void)
 		showFramebuffer(&framebuffer);
 		return;
 	}
+
 	if (state == DEAD_SCREEN) {
 		Area fullArea(0, 0, 160, 120);
 		framebuffer.drawImage(victoryImage, 0, 0, fullArea);
 		showFramebuffer(&framebuffer);
 		return;
 	}
+
 	if (state == TUTORIAL_SCREEN) {
 		Area fullArea(0, 0, 160, 120);
 		framebuffer.drawImage(tutorialImage, 0, 0, fullArea);
