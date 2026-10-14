@@ -182,6 +182,7 @@ Game::Game(int window_width, int window_height, SDL_Window* window)
 	hurtImage.load("data/craftpix-net-363992-free-top-down-orc-game-character-pixel-art/PNG/Orc3/Without_shadow/orc3_hurt_without_shadow.png");
 	victoryImage.load("data/credits.png");
 	nextStageItemImage.load("data/nextStageItem.png");
+	tutorialImage.load("data/tutorial_screen.png");
 	//enableAudio();
 	//synth.playSample("data/coin.wav",1,true);
 	//synth.osc1.amplitude = 0.5;
@@ -293,6 +294,12 @@ void Game::render(void)
 		showFramebuffer(&framebuffer);
 		return;
 	}
+	if (state == TUTORIAL_SCREEN) {
+		Area fullArea(0, 0, 160, 120);
+		framebuffer.drawImage(tutorialImage, 0, 0, fullArea);
+		showFramebuffer(&framebuffer);
+		return;
+	}
 
 	framebuffer.fill(bgcolor);
 
@@ -371,7 +378,7 @@ void Game::render(void)
 
 void Game::update(double seconds_elapsed)
 {
-	if (state == START_SCREEN) {
+	if (state == START_SCREEN || state == TUTORIAL_SCREEN || state == VICTORY) {
 		return;
 	}
 
@@ -543,6 +550,14 @@ void Game::onKeyDown( SDL_KeyboardEvent event )
 		}
 	}
 	else if (state == START_SCREEN) {
+		switch (event.keysym.sym) {
+		case SDLK_ESCAPE: must_exit = true; break;
+		case SDLK_RETURN:
+			state = TUTORIAL_SCREEN;
+			break;
+		}
+	}
+	else if (state == TUTORIAL_SCREEN) {
 		switch (event.keysym.sym) {
 		case SDLK_ESCAPE: must_exit = true; break;
 		case SDLK_RETURN:
@@ -850,7 +865,9 @@ void Game::updateEnemies(float seconds_elapsed) {
 		//Check the collision with player
 		if (player.invincibilityTimer <= 0.0f && !player.isTeleporting) {
 			if (checkAABBCollision(playerHitX, playerHitY, player.hitWidth, player.hitHeight,enemyHitX, enemyHitY, e.hitWidth, e.hitHeight)) {
-				player.health -= 1;
+				if (!debugMode) {
+					player.health -= 1;
+				}
 				player.invincibilityTimer = 2.0f;
 			}
 		}
@@ -1026,7 +1043,9 @@ void Game::updateFireballs(float seconds_elapsed) {
 			if (checkAABBCollision(player.position.x + player.offsetX, player.position.y + player.offsetY,
 				player.hitWidth, player.hitHeight,
 				fbHitX, fbHitY, (float)fb.hitWidth, (float)fb.hitHeight)) {
-				player.health -= 1;
+				if (!debugMode) {
+					player.health -= 1;
+				}
 				player.invincibilityTimer = 2.0f;
 				fb.active = false;
 			}

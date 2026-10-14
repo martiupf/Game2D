@@ -234,6 +234,7 @@ public:
 	Image sprite;
 	Image tileset;
 	Image nextStageItemImage;
+	Image tutorialImage;
 	std::vector<Enemy> enemies;
 	Image fireballImage;
 	std::vector<Fireball> fireballs;
